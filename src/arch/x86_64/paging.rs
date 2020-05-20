@@ -5,8 +5,8 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+use crate::physicalmem;
 use core::marker::PhantomData;
-use physicalmem;
 
 /// Pointer to the root page table (PML4)
 const PML4_ADDRESS: *mut PageTable<PML4> = 0xFFFF_FFFF_FFFF_F000 as *mut PageTable<PML4>;
@@ -88,15 +88,17 @@ impl PageTableEntry {
 		if flags.contains(PageTableEntryFlags::HUGE_PAGE) {
 			// HUGE_PAGE may indicate a 2 MiB or 1 GiB page.
 			// We don't know this here, so we can only verify that at least the offset bits for a 2 MiB page are zero.
-			assert!(
-				physical_address % LargePageSize::SIZE == 0,
+			assert_eq!(
+				physical_address % LargePageSize::SIZE,
+				0,
 				"Physical address is not on a 2 MiB page boundary (physical_address = {:#X})",
 				physical_address
 			);
 		} else {
 			// Verify that the offset bits for a 4 KiB page are zero.
-			assert!(
-				physical_address % BasePageSize::SIZE == 0,
+			assert_eq!(
+				physical_address % BasePageSize::SIZE,
+				0,
 				"Physical address is not on a 4 KiB page boundary (physical_address = {:#X})",
 				physical_address
 			);

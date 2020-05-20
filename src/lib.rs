@@ -15,15 +15,8 @@
 #![feature(core_intrinsics)]
 #![no_std]
 
-// EXTERNAL CRATES
 #[macro_use]
 extern crate bitflags;
-
-#[cfg(target_arch = "x86_64")]
-extern crate multiboot;
-
-#[cfg(target_arch = "x86_64")]
-extern crate x86;
 
 // MODULES
 #[macro_use]
@@ -38,7 +31,7 @@ mod runtime_glue;
 
 // IMPORTS
 use arch::paging::{BasePageSize, LargePageSize, PageSize};
-use arch::BOOT_INFO;
+use arch::x86_64::BOOT_INFO;
 use core::ptr;
 use elf::*;
 
@@ -60,12 +53,12 @@ pub unsafe fn sections_init() {
 pub unsafe fn check_kernel_elf_file(start_address: usize) -> (usize, usize, usize, usize, usize) {
 	// Verify that this module is a HermitCore ELF executable.
 	let header = &*(start_address as *const ElfHeader);
-	assert!(header.ident.magic == ELF_MAGIC);
-	assert!(header.ident._class == ELF_CLASS_64);
-	assert!(header.ident.data == ELF_DATA_2LSB);
-	assert!(header.ident.pad[0] == ELF_PAD_HERMIT);
-	assert!(header.ty == ELF_ET_EXEC);
-	assert!(header.machine == arch::ELF_ARCH);
+	assert_eq!(header.ident.magic, ELF_MAGIC);
+	assert_eq!(header.ident._class, ELF_CLASS_64);
+	assert_eq!(header.ident.data, ELF_DATA_2LSB);
+	assert_eq!(header.ident.pad[0], ELF_PAD_HERMIT);
+	assert_eq!(header.ty, ELF_ET_EXEC);
+	assert_eq!(header.machine, crate::arch::x86_64::ELF_ARCH);
 	loaderlog!("This is a supported HermitCore Application");
 
 	// Get all necessary information about the ELF executable.
@@ -103,8 +96,8 @@ pub unsafe fn check_kernel_elf_file(start_address: usize) -> (usize, usize, usiz
 	}
 
 	// Verify the information.
-	assert!(physical_address % BasePageSize::SIZE == 0);
-	assert!(virtual_address % LargePageSize::SIZE == 0);
+	assert_eq!(physical_address % BasePageSize::SIZE, 0);
+	assert_eq!(virtual_address % LargePageSize::SIZE, 0);
 	assert!(file_size > 0);
 	assert!(mem_size > 0);
 	loaderlog!("File Size: {} Bytes", file_size);

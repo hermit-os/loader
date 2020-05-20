@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use arch;
+use crate::arch;
 use core::fmt;
 
 pub struct Console;
@@ -19,6 +19,7 @@ impl fmt::Write for Console {
 		Ok(())
 	}
 
+	//ToDo: Does this work for arbitrary utf8 strings?
 	/// Print a string of characters.
 	fn write_str(&mut self, s: &str) -> fmt::Result {
 		for character in s.chars() {

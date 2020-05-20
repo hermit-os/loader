@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use arch::paging::{BasePageSize, PageSize};
+use crate::arch::x86_64::paging::{BasePageSize, PageSize};
 
 static mut CURRENT_ADDRESS: usize = 0;
 
@@ -17,8 +17,9 @@ pub fn init(address: usize) {
 
 pub fn allocate(size: usize) -> usize {
 	assert!(size > 0);
-	assert!(
-		size % BasePageSize::SIZE == 0,
+	assert_eq!(
+		size % BasePageSize::SIZE,
+		0,
 		"Size {:#X} is a multiple of {:#X}",
 		size,
 		BasePageSize::SIZE
