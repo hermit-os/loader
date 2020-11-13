@@ -15,6 +15,7 @@
 #![feature(naked_functions)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
+#![feature(global_asm)]
 #![no_std]
 
 // EXTERNAL CRATES
