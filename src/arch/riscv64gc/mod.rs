@@ -1,6 +1,7 @@
 use goblin::elf;
 pub mod bootinfo;
 pub mod uart;
+pub mod paging;
 
 use crate::arch::bootinfo::*;
 use crate::arch::uart::*;
