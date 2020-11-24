@@ -136,6 +136,11 @@ pub unsafe fn load_kernel(elf: &elf::Elf, elf_start: u64, mem_size: u64) -> (u64
 				let offset = (address + rela.r_offset) as *mut u64;
 				*offset = (address as i64 + rela.r_addend.unwrap_or(0)) as u64;
 			}
+			#[cfg(target_arch = "riscv64")]
+			R_RISCV_RELATIVE => {
+				let offset = (address + rela.r_offset) as *mut u64;
+				*offset = (address as i64 + rela.r_addend.unwrap_or(0)) as u64;
+			}
 			_ => {
 				loaderlog!("Unsupported relocation type {}", rela.r_type);
 			}
