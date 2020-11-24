@@ -2,6 +2,7 @@ use goblin::elf;
 pub mod bootinfo;
 pub mod uart;
 pub mod paging;
+pub mod physicalmem;
 
 use crate::arch::bootinfo::*;
 use crate::arch::uart::*;
@@ -28,11 +29,21 @@ pub fn output_message_byte(byte: u8) {
 }
 
 pub fn find_kernel() -> &'static [u8] {
-    unimplemented!();
+    // HERMIT_APP is the absolute path of the RustyHermit kernel
+    include_bytes!(env!("HERMIT_APP"))
 }
 
 pub unsafe fn boot_kernel(virtual_address: u64, mem_size: u64, entry_point: u64) -> ! {
-    unimplemented!();
+    loaderlog!(
+		"Jumping to HermitCore Application Entry Point at 0x{:x}",
+		entry_point
+	);
+
+    BOOT_INFO.base = virtual_address;
+    BOOT_INFO.image_size = mem_size;
+
+    let kernel_entry: extern "C" fn(boot_info: &'static mut BootInfo) -> ! = core::mem::transmute(entry_point);
+    kernel_entry(&mut BOOT_INFO);
 }
 
 #[no_mangle]
