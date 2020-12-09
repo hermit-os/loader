@@ -7,6 +7,9 @@ pub mod physicalmem;
 use crate::arch::bootinfo::*;
 use crate::arch::uart::*;
 
+use crate::arch::paging::GigaPageSize;
+use crate::arch::riscv64gc::paging::PageSize;
+
 global_asm!(include_str!("trap.S"));
 global_asm!(include_str!("boot.S"));
 
@@ -16,12 +19,16 @@ const UART_ADDRESS: *mut u8 = 0x1000_0000 as *mut u8;
 
 const UART: Uart = Uart::new(UART_ADDRESS);
 
+extern "C" {
+	static kernel_end: u8;
+}
+
 pub fn message_output_init() {
     println!("in riscv");
 }
 
 pub unsafe fn get_memory(_memory_size: u64) -> u64 {
-    unimplemented!();
+	align_up!(&kernel_end as *const u8 as u64, GigaPageSize::SIZE as u64)
 }
 
 pub fn output_message_byte(byte: u8) {
