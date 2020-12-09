@@ -1,8 +1,8 @@
 use goblin::elf;
 pub mod bootinfo;
-pub mod uart;
 pub mod paging;
 pub mod physicalmem;
+pub mod uart;
 
 use crate::arch::bootinfo::*;
 use crate::arch::uart::*;
@@ -24,7 +24,7 @@ extern "C" {
 }
 
 pub fn message_output_init() {
-    println!("in riscv");
+	println!("in riscv");
 }
 
 pub unsafe fn get_memory(_memory_size: u64) -> u64 {
@@ -32,28 +32,29 @@ pub unsafe fn get_memory(_memory_size: u64) -> u64 {
 }
 
 pub fn output_message_byte(byte: u8) {
-    UART.write_byte(byte);
+	UART.write_byte(byte);
 }
 
 pub fn find_kernel() -> &'static [u8] {
-    // HERMIT_APP is the absolute path of the RustyHermit kernel
-    include_bytes!(env!("HERMIT_APP"))
+	// HERMIT_APP is the absolute path of the RustyHermit kernel
+	include_bytes!(env!("HERMIT_APP"))
 }
 
 pub unsafe fn boot_kernel(virtual_address: u64, mem_size: u64, entry_point: u64) -> ! {
-    loaderlog!(
+	loaderlog!(
 		"Jumping to HermitCore Application Entry Point at 0x{:x}",
 		entry_point
 	);
 
-    BOOT_INFO.base = virtual_address;
-    BOOT_INFO.image_size = mem_size;
+	BOOT_INFO.base = virtual_address;
+	BOOT_INFO.image_size = mem_size;
 
-    let kernel_entry: extern "C" fn(boot_info: &'static mut BootInfo) -> ! = core::mem::transmute(entry_point);
-    kernel_entry(&mut BOOT_INFO);
+	let kernel_entry: extern "C" fn(boot_info: &'static mut BootInfo) -> ! =
+		core::mem::transmute(entry_point);
+	kernel_entry(&mut BOOT_INFO);
 }
 
 #[no_mangle]
 pub fn cpu_ipi() -> ! {
-    panic!();
+	panic!();
 }
