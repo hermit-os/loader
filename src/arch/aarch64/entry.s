@@ -1,6 +1,6 @@
 // Adapted from https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/02_runtime_init/src/_arch/aarch64/cpu/boot.s
 
-.equ _core_id_mask, 0b11    //Assume 4 core raspi3
+.equ _core_id_mask, 0b11    //Assume 4 core raspi3b
 
 
 // Load the address of a symbol into a register, PC-relative.

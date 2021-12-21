@@ -10,7 +10,7 @@ impl fmt::Write for Console {
 	#[cfg(feature = "aarch64-qemu-stdout")]
 	fn write_char(&mut self, c: char) -> fmt::Result {
 		unsafe {
-			core::ptr::write_volatile(0x3F20_1000 as *mut u8, c as u8); //qemu raspi3
+			core::ptr::write_volatile(0x3F20_1000 as *mut u8, c as u8); //qemu raspi3b
 		}
 		Ok(())
 	}
