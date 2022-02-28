@@ -152,7 +152,7 @@ pub unsafe fn load_kernel(elf: &Elf<'_>, elf_start: u64, mem_size: u64) -> (Opti
 	// relocate entries (strings, copy-data, etc.) with an addend
 	for rela in &elf.dynrelas {
 		match rela.r_type {
-			reloc::R_X86_64_RELATIVE | reloc::R_AARCH64_RELATIVE => {
+			reloc::R_X86_64_RELATIVE | reloc::R_AARCH64_RELATIVE | reloc::R_RISCV_RELATIVE => {
 				let offset = (address + rela.r_offset) as *mut u64;
 				*offset = (address as i64 + rela.r_addend.unwrap_or(0))
 					.try_into()

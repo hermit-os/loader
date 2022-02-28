@@ -1,5 +1,7 @@
 #![feature(alloc_error_handler)]
 #![cfg_attr(target_arch = "aarch64", feature(asm_const))]
+#![cfg_attr(target_arch = "riscv64", feature(naked_functions))]
+#![cfg_attr(target_arch = "riscv64", feature(asm_sym))]
 #![allow(incomplete_features)]
 #![feature(specialization)]
 #![no_std]
