@@ -6,6 +6,7 @@
 #![warn(rust_2018_idioms)]
 #![allow(incomplete_features)]
 #![allow(clippy::missing_safety_doc)]
+#![cfg_attr(target_os = "uefi", feature(abi_efiapi))]
 
 #[macro_use]
 mod macros;
@@ -17,7 +18,6 @@ mod kernel;
 use core::{
 	fmt::{self, Write},
 	mem::MaybeUninit,
-	ptr::addr_of_mut,
 	slice,
 };
 
@@ -27,6 +27,7 @@ use rusty_loader as _;
 use arch::BOOT_INFO;
 use kernel::{LoadInfo, Object};
 
+#[cfg(target_os = "none")]
 extern "C" {
 	static kernel_end: u8;
 	static kernel_start: u8;
@@ -34,6 +35,7 @@ extern "C" {
 
 /// Entry Point of the HermitCore Loader
 /// (called from entry.asm or entry.rs)
+#[cfg(target_os = "none")]
 #[no_mangle]
 unsafe extern "C" fn loader_main() -> ! {
 	init_bss();
@@ -71,7 +73,22 @@ unsafe extern "C" fn loader_main() -> ! {
 	)
 }
 
+#[cfg(target_os = "uefi")]
+mod uefi_main {
+	use uefi::prelude::*;
+
+	#[entry]
+	fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+		uefi_services::init(&mut system_table).unwrap();
+	
+		Status::SUCCESS
+	}
+}
+
+#[cfg(target_os = "none")]
 unsafe fn init_bss() {
+	use core::ptr::addr_of_mut;
+
 	extern "C" {
 		static mut bss_start: MaybeUninit<u8>;
 		static mut bss_end: MaybeUninit<u8>;
@@ -84,6 +101,7 @@ unsafe fn init_bss() {
 	slice.fill(MaybeUninit::new(0));
 }
 
+#[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
 	// We can't use `println!` or related macros, because `_print` unwraps a result and might panic again
