@@ -21,10 +21,13 @@ pub mod macros;
 pub mod arch;
 pub mod console;
 pub mod kernel;
+#[cfg(target_os = "none")]
 mod runtime_glue;
 
+#[cfg(target_os = "none")]
 use core::ptr;
 
+#[cfg(target_os = "none")]
 use static_alloc::Bump;
 
 /// A simple bump memory allocator using static storage.
@@ -32,10 +35,12 @@ use static_alloc::Bump;
 /// This allocator is used for bootstrapping.
 /// It manages a slice of uninitialized memory and cannot deallocate.
 /// The kernel will setup a proper memory allocator later.
+#[cfg(target_os = "none")]
 #[global_allocator]
 static ALLOCATOR: Bump<[u8; 2 * 1024 * 1024]> = Bump::uninit();
 
 // FUNCTIONS
+#[cfg(target_os = "none")]
 pub unsafe fn sections_init() {
 	extern "C" {
 		static bss_end: u8;

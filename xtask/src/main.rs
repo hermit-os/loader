@@ -96,16 +96,16 @@ impl flags::Build {
 	}
 
 	fn convert_object(&self) -> Result<()> {
-		let sh = sh()?;
-
-		let input = self.build_object();
-		let output = self.dist_object();
-		sh.create_dir(output.parent().unwrap())?;
-		sh.copy_file(&input, &output)?;
-
-		let objcopy = binutil("objcopy")?;
-
 		if self.arch == "x86_64" {
+			let sh = sh()?;
+
+			let input = self.build_object();
+			let output = self.dist_object();
+			sh.create_dir(output.parent().unwrap())?;
+			sh.copy_file(&input, &output)?;
+
+			let objcopy = binutil("objcopy")?;
+
 			cmd!(sh, "{objcopy} --output-target elf32-i386 {output}").run()?;
 		}
 
@@ -198,7 +198,7 @@ fn target_args(arch: &str) -> Result<&'static [&'static str]> {
 		"x86_64" => Ok(&["--target=x86_64-unknown-none"]),
 		"x86_64-uefi" => Ok(&[
 			"--target=x86_64-unknown-uefi",
-			"-Zbuild-std=core,alloc",
+			"-Zbuild-std=core,alloc,compiler_builtins",
 			"-Zbuild-std-features=compiler-builtins-mem",
 		]),
 		"aarch64" => Ok(&[

@@ -3,10 +3,14 @@
 #![cfg_attr(test, allow(dead_code, unused_macros, unused_imports))]
 #![warn(rust_2018_idioms)]
 #![allow(clippy::missing_safety_doc)]
+#![cfg_attr(target_os = "uefi", feature(abi_efiapi))]
 
 use rusty_loader::arch;
 use rusty_loader::*;
+#[cfg(target_os = "uefi")]
+use uefi::prelude::*;
 
+#[cfg(target_os = "none")]
 extern "C" {
 	static kernel_end: u8;
 	static kernel_start: u8;
@@ -14,7 +18,7 @@ extern "C" {
 
 /// Entry Point of the HermitCore Loader
 /// (called from entry.asm or entry.rs)
-#[no_mangle]
+#[cfg(target_os = "none")]
 pub unsafe extern "C" fn loader_main() -> ! {
 	sections_init();
 	arch::message_output_init();
@@ -37,4 +41,11 @@ pub unsafe extern "C" fn loader_main() -> ! {
 
 	// boot kernel
 	arch::boot_kernel(elf_location, kernel_location, mem_size, entry_point)
+}
+
+#[entry]
+fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
+	uefi_services::init(&mut system_table).unwrap();
+
+	Status::SUCCESS
 }
