@@ -66,6 +66,7 @@ impl flags::Build {
 				rustflags.push("-Clink-arg=-Tsrc/arch/x86_64/link.ld");
 				rustflags.push("-Crelocation-model=static");
 			}
+			"x86_64-uefi" => {}
 			"aarch64" => {
 				rustflags.push("-Clink-arg=-Tsrc/arch/aarch64/link.ld");
 			}
