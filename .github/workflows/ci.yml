@@ -54,7 +54,11 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install qemu nasm
+          # Install QEMU 6.2.0 as workaround for https://github.com/hermitcore/rusty-loader/issues/99
+          brew tap-new hermitcore/homebrew-old
+          brew extract --version 6.2.0 qemu hermitcore/homebrew-old
+          brew install hermitcore/homebrew-old/qemu@6.2.0
+          brew install nasm
       - name: Install QEMU, NASM (windows)
         if: matrix.os == 'windows-latest'
         run: |
