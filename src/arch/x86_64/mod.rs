@@ -4,7 +4,9 @@ pub mod physicalmem;
 
 pub use self::bootinfo::*;
 
+#[cfg(target_os = "none")]
 use core::ptr::{copy, write_bytes};
+#[cfg(target_os = "none")]
 use core::{cmp, mem, slice};
 
 #[cfg(target_os = "none")]
@@ -13,6 +15,7 @@ use uart_16550::SerialPort;
 
 use paging::{BasePageSize, LargePageSize, PageSize, PageTableEntryFlags};
 
+#[cfg(target_os = "none")]
 extern "C" {
 	static mb_info: usize;
 	static kernel_end: u8;
