@@ -41,12 +41,12 @@ impl flags::Build {
 			.args(self.profile_args())
 			.run()?;
 
-		if self.arch == "x86_64" {
-			let build_object = self.build_object();
-			let dist_object = self.dist_object();
-			sh.create_dir(dist_object.parent().unwrap())?;
-			sh.copy_file(&build_object, &dist_object)?;
+		let build_object = self.build_object();
+		let dist_object = self.dist_object();
+		sh.create_dir(dist_object.parent().unwrap())?;
+		sh.copy_file(&build_object, &dist_object)?;
 
+		if self.arch == "x86_64" {
 			eprintln!("Converting object to elf32-i386");
 			self.convert_to_elf32_i386()?;
 		}
