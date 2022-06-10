@@ -69,6 +69,10 @@ jobs:
         run: cargo xtask build --arch ${{ matrix.arch }}
         env:
           HERMIT_APP: ${{ github.workspace }}/data/${{ matrix.arch }}/hello_world
+      - name: Build
+        run: cargo xtask build --arch $${{ matrix.arch }}-uefi
+        env:
+          HERMIT_APP: ${{ github.workspace }}/data/${{ matrix.arch }}/hello_world
       - name: Run loader (x86_64)
         if: matrix.arch == 'x86_64'
         run: |
