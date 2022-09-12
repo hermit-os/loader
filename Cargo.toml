@@ -22,7 +22,7 @@ aarch64 = "0.0.7"
 align-data = "0.1"
 
 [target.'cfg(target_os = "uefi")'.dependencies]
-uefi = { version = "0.16", features = ["exts"] }
+uefi = { version = "0.17", features = ["exts"] }
 uefi-services = "0.13"
 
 [build-dependencies]
