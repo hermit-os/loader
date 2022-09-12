@@ -172,7 +172,7 @@ dependencies = [
  "multiboot",
  "nasm-rs",
  "uart_16550",
- "uefi",
+ "uefi 0.16.1",
  "uefi-services",
 ]
 
@@ -238,7 +238,19 @@ dependencies = [
  "bitflags",
  "log",
  "ucs2",
- "uefi-macros",
+ "uefi-macros 0.7.0",
+]
+
+[[package]]
+name = "uefi"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1681124c58206560962ed40f54603f0f8364dc4ee747b4f5adb8edf2f48a00d5"
+dependencies = [
+ "bitflags",
+ "log",
+ "ucs2",
+ "uefi-macros 0.8.1",
 ]
 
 [[package]]
@@ -253,14 +265,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "uefi-services"
-version = "0.13.1"
+name = "uefi-macros"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e7ce6ab4c7b45257f379b851ad82d25a51359748e9c5950c6ef31ad5eb2f9ba"
+checksum = "3c3cc7f4faa361e529a6c92683e8e5c2a8a1522879d0f65fa924197e2b268b93"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "uefi-services"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d420aeaf5194ba1432470b4a316f366c16ef436f2884779eb81430d4d5fad27e"
 dependencies = [
  "cfg-if",
  "log",
- "uefi",
+ "uefi 0.17.0",
 ]
 
 [[package]]
