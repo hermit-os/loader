@@ -23,7 +23,7 @@ align-data = "0.1"
 
 [target.'cfg(target_os = "uefi")'.dependencies]
 uefi = { version = "0.16", features = ["exts"] }
-uefi-services = "0.13"
+uefi-services = "0.15"
 
 [build-dependencies]
 cc = "1.0"
