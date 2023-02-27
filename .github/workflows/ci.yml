@@ -75,7 +75,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Use nightly Rust toolchain (UEFI)
         if: matrix.target == 'x86_64-uefi'
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly-2023-02-01
       - name: Build
