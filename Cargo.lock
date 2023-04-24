@@ -57,7 +57,7 @@ dependencies = [
 [[package]]
 name = "hermit-dtb"
 version = "0.1.0"
-source = "git+https://github.com/hermitcore/hermit-dtb.git#7c87b15905f7800b662b9e26d8fa7dd5122129d7"
+source = "git+https://github.com/hermitcore/hermit-dtb.git#4b38dbc9d83ba70d3cd7137316e12471c6ffb365"
 
 [[package]]
 name = "hermit-entry"
