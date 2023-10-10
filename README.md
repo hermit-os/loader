@@ -6,19 +6,51 @@ This project is a loader to run the [Hermit kernel](https://github.com/hermitcor
 
 * [`rustup`](https://www.rust-lang.org/tools/install)
 
-## Building
+### UEFI Boot (x86_64 only)
+
+QEMU does not support UEFI as firmware interface per se. You'll need to install [OVMF](https://github.com/tianocore/tianocore.github.io/wiki/OVMF-FAQ#what-is-open-virtual-machine-firmware-ovmf) (an open source implementation of UEFI for virtual machines).
+You can do so, e.g., via terminal:
+```bash
+$ sudo apt install ovmf
+```
+Then, you can modify your QEMU command via the `-bios` flag accordingly later on.
+
+## Building (BIOS Boot)
 
 ```bash
 $ cargo xtask build --target <TARGET> --release
 ```
 
-With `<TARGET>` being either `x86_64`, `x86_64-uefi`, or `aarch64`.
+With `<TARGET>` being either `x86_64`, or `aarch64`.
 
 Afterward, the loader is located at `target/<TARGET>/release/hermit-loader`.
+
+## Building (UEFI Boot, x86_64 only)
+
+Currently, the loader requires a compiled binary of your Hermit application in the directory `src/arch/x86_64/`.
+Then, the name of your application has to be specified in the `find_kernel` function (in `src/arch/x86_64/mod.rs`) like so:
+```
+#[cfg(target_os = "uefi")]
+pub unsafe fn find_kernel() -> &'static [u8] {
+	include_bytes!("APPLICATION_NAME")
+}
+```
+whereas `APPLICATION_NAME` needs to be replaced with the actual name of your application.
+
+Afterwards, you can build the loader:
+```bash
+$ cargo xtask build --target <TARGET> --release
+```
+
+With `<TARGET>` being `x86_64-uefi`.
+
+Finally, the loader is located at `target/<TARGET>/release/BootX64.efi`.
 
 ## Running
 
 ### x86-64
+
+#### BIOS Boot
 
 On x86-64 Linux with KVM, you can boot Hermit like this:
 
@@ -32,6 +64,27 @@ $ qemu-system-x86_64 \
     -display none -serial stdio \
     -kernel <LOADER> \
     -initrd <APP>
+```
+
+#### UEFI Boot
+
+The UEFI Specification requires the loader to be located in a directory structure like so: `/bootloader/efi/boot/`.
+A quick way to do this is via the following terminal commands:
+```bash
+$ mkdir -p bootloader/efi/boot
+
+$ cp -f target/x86_64-uefi/debug/BootX64.efi bootloader/efi/boot/
+```
+
+Then, you can boot Hermit like this:
+```
+qemu-system-x86_64 -nographic -cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
+    -smp <NUMBER OF CORES> \
+    -m 512M \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+    --bios OVMF.fd \
+    -drive format=raw,file=fat:rw:bootloader,media=disk \
+    -d cpu_reset
 ```
 
 #### No KVM

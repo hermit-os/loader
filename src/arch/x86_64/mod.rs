@@ -6,7 +6,7 @@ mod physicalmem;
 use core::arch::asm;
 #[cfg(all(target_os = "none", not(feature = "fc")))]
 use core::mem;
-#[cfg(target_os = "none")]
+#[cfg(any(target_os = "none", target_os = "uefi"))]
 use core::ptr::write_bytes;
 #[cfg(target_os = "none")]
 use core::slice;
@@ -29,6 +29,12 @@ use multiboot::information::MemoryManagement;
 #[cfg(all(target_os = "none", not(feature = "fc")))]
 use multiboot::information::{Multiboot, PAddr};
 use uart_16550::SerialPort;
+#[cfg(target_os = "uefi")]
+use uefi::prelude::*;
+#[cfg(target_os = "uefi")]
+use uefi::table::{boot::*, cfg};
+#[cfg(target_os = "uefi")]
+use x86_64::align_up;
 use x86_64::structures::paging::{PageSize, PageTableFlags, Size2MiB, Size4KiB};
 
 #[cfg(all(target_os = "none", not(feature = "fc")))]
@@ -93,19 +99,76 @@ pub fn output_message_byte(byte: u8) {
 	unsafe { COM1.send(byte) };
 }
 
+// Right now, the kernel binary has to be hardcoded into the loader.
+// The binary has to be in the same directory (or its whereabouts have to specified in the "include_bytes!" statement).
 #[cfg(target_os = "uefi")]
 pub unsafe fn find_kernel() -> &'static [u8] {
-	&[1, 2, 3]
+	include_bytes!("hermit-rs-template")
 }
 
+/// This is the actual boot function.
+/// The bootstack is cleared and provided/calculated BOOT_INFO is written into before the actual call to the assembly code to jump into the kernel.
 #[cfg(target_os = "uefi")]
 pub unsafe fn boot_kernel(
-	_elf_address: Option<u64>,
-	_virtual_address: u64,
-	_mem_size: u64,
-	_entry_point: u64,
+	rsdp_addr: u64,
+	kernel_addr: u64,
+	filesize: usize,
+	kernel_info: LoadedKernel,
+	runtime_system_table: uefi::table::SystemTable<uefi::table::Runtime>,
+	start_address: usize,
+	end_address: usize,
 ) -> ! {
-	loop {}
+	let LoadedKernel {
+		load_info,
+		entry_point,
+	} = kernel_info;
+
+	let kernel_end = kernel_addr + filesize as u64;
+	info!("kernel_end at: {:#x}", kernel_end);
+	// determine boot stack address
+	let mut new_stack = align_up(kernel_end, Size4KiB::SIZE);
+
+	// clear stack
+	write_bytes(
+		new_stack as *mut u8,
+		0,
+		KERNEL_STACK_SIZE.try_into().unwrap(),
+	);
+
+	static mut BOOT_INFO: Option<RawBootInfo> = None;
+
+	// Write previously gathered information relevant for booting into the BOOT_INFO struct
+	BOOT_INFO = {
+		let boot_info = BootInfo {
+			hardware_info: HardwareInfo {
+				phys_addr_range: start_address as u64..end_address as u64,
+				serial_port_base: SerialPortBase::new(SERIAL_IO_PORT),
+				device_tree: None,
+			},
+			load_info,
+			platform_info: PlatformInfo::Uefi { rsdp_addr },
+		};
+		info!("Boot Info (Loader): {:#x?}", boot_info);
+		Some(RawBootInfo::from(boot_info))
+	};
+
+	info!("BootInfo located at {:#x}", &BOOT_INFO as *const _ as u64);
+
+	// Jump to the kernel entry point and provide the BOOT_INFO as well.
+	info!(
+		"Jumping to HermitCore Application Entry Point at {:#x}",
+		entry_point
+	);
+
+	asm!(
+		"mov rsp, {stack_address}",
+		"jmp {entry}",
+		stack_address = in(reg) new_stack as u64,
+		entry = in(reg) entry_point,
+		in("rdi") BOOT_INFO.as_ref().unwrap(),
+		in("rsi") 0,
+		options(noreturn)
+	)
 }
 
 #[cfg(all(target_os = "none", feature = "fc"))]
