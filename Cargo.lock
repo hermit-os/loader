@@ -311,7 +311,7 @@ dependencies = [
  "spinning_top",
  "sptr",
  "uart_16550",
- "uefi",
+ "uefi 0.24.0",
  "uefi-services",
  "vm-fdt",
  "x86_64",
@@ -624,6 +624,21 @@ dependencies = [
 
 [[package]]
 name = "uefi"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b63e82686b4bdb0db74f18b2abbd60a0470354fb640aa69e115598d714d0a10"
+dependencies = [
+ "bitflags 2.4.1",
+ "log",
+ "ptr_meta",
+ "ucs2",
+ "uefi-macros 0.12.0",
+ "uefi-raw 0.3.0",
+ "uguid",
+]
+
+[[package]]
+name = "uefi"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07ead9f748a4646479b850add36b527113a80e80a7e0f44d7b0334291850dcc5"
@@ -632,9 +647,20 @@ dependencies = [
  "log",
  "ptr_meta",
  "ucs2",
- "uefi-macros",
- "uefi-raw",
+ "uefi-macros 0.13.0",
+ "uefi-raw 0.5.0",
  "uguid",
+]
+
+[[package]]
+name = "uefi-macros"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "023d94ef8e135d068b9a3bd94614ef2610b2b0419ade0a9d8f3501fa9cd08e95"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
 ]
 
 [[package]]
@@ -646,6 +672,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.38",
+]
+
+[[package]]
+name = "uefi-raw"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62642516099c6441a5f41b0da8486d5fc3515a0603b0fdaea67b31600e22082e"
+dependencies = [
+ "bitflags 2.4.1",
+ "ptr_meta",
+ "uguid",
 ]
 
 [[package]]
@@ -668,7 +705,7 @@ dependencies = [
  "cfg-if",
  "log",
  "qemu-exit",
- "uefi",
+ "uefi 0.26.0",
 ]
 
 [[package]]
