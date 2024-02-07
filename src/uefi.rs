@@ -6,7 +6,9 @@ use core::{cmp, fmt::Write, mem, slice};
 use hermit_entry::elf::KernelObject;
 use log::info;
 use uefi::{
+	Identify,
 	prelude::*,
+	proto::console::gop::GraphicsOutput,
 	table::{boot::*, cfg},
 };
 
@@ -28,6 +30,25 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 	// qemu_exit_handle.exit_success()
 	
 	info!("Hello World from UEFI boot!");
+	let stdout = system_table.stdout();
+	stdout.clear().unwrap();
+	writeln!(stdout, "Hello World! This is the bootloader").unwrap();
+
+	
+	let bs = system_table.boot_services();
+	let gop_handle = bs.get_handle_for_protocol::<GraphicsOutput>().unwrap();
+	let mut gop = bs.open_protocol_exclusive::<GraphicsOutput>(gop_handle).unwrap();
+	// for g in gop.modes(){
+	// 	info!("gop_handle modes: {:#?}", g.info());
+	// }
+	let gop_mode = gop.query_mode(0).unwrap();
+	gop.set_mode(&gop_mode).unwrap();
+	let mut framebuffer = gop.frame_buffer();
+	for i in 0..1000 {
+	unsafe {framebuffer.write_byte(i, 69)};
+	
+	}
+	drop(gop);
 	// look for the rsdp in the EFI system table before calling exit boot services (see UEFI specification for more)
 	let rsdp_addr = {
 		// returns an iterator to the config table entries which in turn point to other system-specific tables
@@ -63,6 +84,7 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 
 	// exit boot services for getting a runtime view of the system table and an iterator to the UEFI memory map
 	let (runtime_system_table, mut memory_map) = system_table.exit_boot_services();
+	//writeln!(stdout, "Hello World! This is the bootloader").unwrap();
 
 	memory_map.sort();
 	let mut entries = memory_map.entries();
@@ -95,6 +117,7 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 		runtime_system_table,
 		start_address,
 		end_address,
+
 	)
 }
 
