@@ -47,7 +47,7 @@ sptr = "0.3"
 
 [build-dependencies]
 cc = "1.0"
-nasm-rs = "0.2"
+nasm-rs = "0.3"
 
 [profile.release]
 strip = "debuginfo"
