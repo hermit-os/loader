@@ -82,6 +82,7 @@ impl MemoryManagement for Mem {
 }
 
 #[cfg_attr(not(feature = "fc"), allow(bad_asm_style))]
+#[cfg(target_os = "none")]
 mod entry {
 	#[cfg(not(feature = "fc"))]
 	core::arch::global_asm!(include_str!("entry.s"));

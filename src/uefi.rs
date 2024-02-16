@@ -1,6 +1,5 @@
 use qemu_exit::QEMUExit;
 use crate::arch;
-use crate::console;
 use core::{cmp, fmt::Write, mem, slice};
 #[allow(unused_imports)]
 use hermit_entry::elf::KernelObject;
@@ -20,34 +19,37 @@ use uefi::{
 #[entry]
 unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
 	// initialize Hermits Log functionality
-	arch::message_output_init();
-	crate::log::init();
+	uefi_services::init(&mut system_table).unwrap();
 
-	// log::info!("Hello, UEFI!");
+	log::info!("Hello, UEFI!");
 
 	// let custom_exit_success = 3;
 	// let qemu_exit_handle = qemu_exit::X86::new(0xf4, custom_exit_success);
 	// qemu_exit_handle.exit_success()
 	
 	info!("Hello World from UEFI boot!");
-	let stdout = system_table.stdout();
-	stdout.clear().unwrap();
-	writeln!(stdout, "Hello World! This is the bootloader").unwrap();
+	// let stdout = system_table.stdout();
+	// stdout.clear().unwrap();
+	// writeln!(stdout, "Hello World! This is the bootloader").unwrap();
 
 	
 	let bs = system_table.boot_services();
 	let gop_handle = bs.get_handle_for_protocol::<GraphicsOutput>().unwrap();
 	let mut gop = bs.open_protocol_exclusive::<GraphicsOutput>(gop_handle).unwrap();
-	// for g in gop.modes(){
-	// 	info!("gop_handle modes: {:#?}", g.info());
-	// }
-	let gop_mode = gop.query_mode(0).unwrap();
-	gop.set_mode(&gop_mode).unwrap();
+	// // for g in gop.modes(){
+	// // 	info!("gop_handle modes: {:#?}", g.info());
+	// // }
+	// let gop_mode = gop.query_mode(0).unwrap();
+	// //gop.set_mode(&gop_mode).unwrap();
 	let mut framebuffer = gop.frame_buffer();
-	for i in 0..1000 {
-	unsafe {framebuffer.write_byte(i, 69)};
+	let mut framebuf_ptr = framebuffer.as_mut_ptr();
+	let framebuf_size = framebuffer.size();
+	info!("framebuf_ptr: {framebuf_ptr:?}");
+	for i in 0..100000 {
+	unsafe {framebuffer.write_byte(i, 110)};
 	
 	}
+
 	drop(gop);
 	// look for the rsdp in the EFI system table before calling exit boot services (see UEFI specification for more)
 	let rsdp_addr = {
@@ -84,7 +86,10 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 
 	// exit boot services for getting a runtime view of the system table and an iterator to the UEFI memory map
 	let (runtime_system_table, mut memory_map) = system_table.exit_boot_services();
-	//writeln!(stdout, "Hello World! This is the bootloader").unwrap();
+	
+	for i in 100000..200000 {
+		unsafe { framebuf_ptr.add(i).write_volatile(50) }
+	}
 
 	memory_map.sort();
 	let mut entries = memory_map.entries();
@@ -93,7 +98,7 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 	let mut max_size = 0;
 	for index in entries {
 		if index.ty.eq(&uefi::table::boot::MemoryType(7)) {
-			size = index.page_count;
+			size = index.page_count;			
 			if size > max_size {
 				max_size = size;
 			}
@@ -109,6 +114,7 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 	info!("Kernelmemory: start: {start_address:#x?}, end: {end_address:#x?}");
 
 	// Jump into actual booting routine
+	
 	arch::boot_kernel(
 		rsdp_addr,
 		kernel_addr,
@@ -121,10 +127,11 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 	)
 }
 
-#[panic_handler]
-fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
-	// We can't use `println!` or related macros, because `_print` unwraps a result and might panic again
-	writeln!(unsafe { &mut console::CONSOLE }, "[LOADER] {info}").ok();
+// #[panic_handler]
+// fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
+// 	// We can't use `println!` or related macros, because `_print` unwraps a result and might panic again
+// 	writeln!(unsafe { &mut console::CONSOLE }, "[LOADER] {info}").ok();
 
-	loop {}
-}
+// 	loop {}
+// }
+
