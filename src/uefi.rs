@@ -85,8 +85,8 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 	info!("Kernel loaded into memory");
 
 	// exit boot services for getting a runtime view of the system table and an iterator to the UEFI memory map
-	let (runtime_system_table, mut memory_map) = system_table.exit_boot_services();
-	
+	let (runtime_system_table, mut memory_map) = system_table.exit_boot_services(MemoryType::LOADER_DATA);
+
 	for i in 100000..200000 {
 		unsafe { framebuf_ptr.add(i).write_volatile(50) }
 	}
