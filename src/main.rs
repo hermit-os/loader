@@ -13,6 +13,8 @@ mod allocator;
 mod arch;
 #[cfg(target_os = "none")]
 mod console;
+#[cfg(target_os = "uefi")]
+mod framebuffer;
 #[cfg(target_os = "none")]
 mod log;
 #[cfg(target_os = "none")]

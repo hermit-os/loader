@@ -11,6 +11,8 @@ use core::ptr::write_bytes;
 #[cfg(target_os = "none")]
 use core::slice;
 
+#[cfg(target_os = "uefi")]
+use crate::framebuffer;
 use align_address::Align;
 #[cfg(all(target_os = "none", not(feature = "fc")))]
 use hermit_entry::boot_info::DeviceTreeAddress;
@@ -22,6 +24,8 @@ use hermit_entry::fc::{
 	E820_TABLE_OFFSET, HDR_MAGIC_OFFSET, LINUX_KERNEL_BOOT_FLAG_MAGIC, LINUX_KERNEL_HRD_MAGIC,
 	LINUX_SETUP_HEADER_OFFSET, RAMDISK_IMAGE_OFFSET, RAMDISK_SIZE_OFFSET,
 };
+
+#[allow(unused_imports)]
 use hermit_entry::Entry;
 use log::info;
 #[cfg(all(target_os = "none", not(feature = "fc")))]
@@ -30,7 +34,11 @@ use multiboot::information::MemoryManagement;
 use multiboot::information::{Multiboot, PAddr};
 use uart_16550::SerialPort;
 #[cfg(target_os = "uefi")]
+use uefi::fs::*;
+#[cfg(target_os = "uefi")]
 use uefi::prelude::*;
+#[cfg(target_os = "uefi")]
+use uefi::proto::media::fs::SimpleFileSystem;
 #[cfg(target_os = "uefi")]
 use uefi::table::{boot::*, cfg};
 #[cfg(target_os = "uefi")]
@@ -102,15 +110,17 @@ pub fn output_message_byte(byte: u8) {
 
 /// This is the actual boot function.
 /// The bootstack is cleared and provided/calculated BOOT_INFO is written into before the actual call to the assembly code to jump into the kernel.
+#[allow(clippy::too_many_arguments)]
 #[cfg(target_os = "uefi")]
 pub unsafe fn boot_kernel(
 	rsdp_addr: u64,
 	kernel_addr: u64,
 	filesize: usize,
 	kernel_info: LoadedKernel,
-	runtime_system_table: uefi::table::SystemTable<uefi::table::Runtime>,
+	_runtime_system_table: uefi::table::SystemTable<uefi::table::Runtime>,
 	start_address: usize,
 	end_address: usize,
+	mut fbwriter: framebuffer::FramebufWriter,
 ) -> ! {
 	let LoadedKernel {
 		load_info,
@@ -119,50 +129,62 @@ pub unsafe fn boot_kernel(
 
 	let kernel_end = kernel_addr + filesize as u64;
 	info!("kernel_end at: {:#x}", kernel_end);
+	fbwriter.write("kernel_end at", Some(kernel_end.try_into().unwrap()));
 	// determine boot stack address
 	let mut new_stack = align_up(kernel_end, Size4KiB::SIZE);
 
 	// clear stack
-	write_bytes(
-		new_stack as *mut u8,
-		0,
-		KERNEL_STACK_SIZE.try_into().unwrap(),
-	);
+	unsafe {
+		write_bytes(
+			new_stack as *mut u8,
+			0,
+			KERNEL_STACK_SIZE.try_into().unwrap(),
+		);
+	}
 
 	static mut BOOT_INFO: Option<RawBootInfo> = None;
 
 	// Write previously gathered information relevant for booting into the BOOT_INFO struct
-	BOOT_INFO = {
-		let boot_info = BootInfo {
-			hardware_info: HardwareInfo {
-				phys_addr_range: start_address as u64..end_address as u64,
-				serial_port_base: SerialPortBase::new(SERIAL_IO_PORT),
-				device_tree: None,
-			},
-			load_info,
-			platform_info: PlatformInfo::Uefi { rsdp_addr },
+	unsafe {
+		BOOT_INFO = {
+			let boot_info = BootInfo {
+				hardware_info: HardwareInfo {
+					phys_addr_range: start_address as u64..end_address as u64,
+					serial_port_base: SerialPortBase::new(SERIAL_IO_PORT),
+					device_tree: None,
+				},
+				load_info,
+				platform_info: PlatformInfo::Uefi { rsdp_addr },
+			};
+			info!("Boot Info (Loader): {:#x?}", boot_info);
+			Some(RawBootInfo::from(boot_info))
 		};
-		info!("Boot Info (Loader): {:#x?}", boot_info);
-		Some(RawBootInfo::from(boot_info))
-	};
+	}
 
 	info!("BootInfo located at {:#x}", &BOOT_INFO as *const _ as u64);
+	fbwriter.write("BootInfo located at", Some(&BOOT_INFO as *const _ as usize));
 
 	// Jump to the kernel entry point and provide the BOOT_INFO as well.
 	info!(
-		"Jumping to HermitCore Application Entry Point at {:#x}",
+		"Jumping to Hermit Application Entry Point at {:#x}",
 		entry_point
 	);
+	fbwriter.write(
+		"Jumping to Hermit Application Entry Point at",
+		Some(entry_point.try_into().unwrap()),
+	);
 
-	asm!(
-		"mov rsp, {stack_address}",
-		"jmp {entry}",
-		stack_address = in(reg) new_stack as u64,
-		entry = in(reg) entry_point,
-		in("rdi") BOOT_INFO.as_ref().unwrap(),
-		in("rsi") 0,
-		options(noreturn)
-	)
+	unsafe {
+		asm!(
+			"mov rsp, {stack_address}",
+			"jmp {entry}",
+			stack_address = in(reg) new_stack as u64,
+			entry = in(reg) entry_point,
+			in("rdi") BOOT_INFO.as_ref().unwrap(),
+			in("rsi") 0,
+			options(noreturn)
+		)
+	}
 }
 
 #[cfg(all(target_os = "none", feature = "fc"))]
