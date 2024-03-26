@@ -100,13 +100,6 @@ pub fn output_message_byte(byte: u8) {
 	unsafe { COM1.send(byte) };
 }
 
-// Right now, the kernel binary has to be hardcoded into the loader.
-// The binary has to be in the same directory (or its whereabouts have to specified in the "include_bytes!" statement).
-#[cfg(target_os = "uefi")]
-pub unsafe fn find_kernel() -> &'static [u8] {
-	include_bytes!("hermit-rs-template")
-}
-
 /// This is the actual boot function.
 /// The bootstack is cleared and provided/calculated BOOT_INFO is written into before the actual call to the assembly code to jump into the kernel.
 #[cfg(target_os = "uefi")]

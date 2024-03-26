@@ -11,6 +11,26 @@ use uefi::{
 	table::{boot::*, cfg},
 };
 
+/// This function reads the provided kernelbinary
+/// req. location: same subdir as the bootloader itself
+/// reg. name: hermit_app
+fn read_app(bt: &BootServices) -> Vec<u8> {
+	let fs = bt
+		.get_image_file_system(bt.image_handle())
+		.expect("should open file system");
+
+	let path = Path::new(cstr16!(r"\efi\boot\hermit_app"));
+
+	let data = FileSystem::new(fs)
+		.read(path)
+		.expect("should read file content");
+
+	let len = data.len();
+	info!("Read Hermit application from \"{path}\" (size = {len} B)");
+
+	data
+}
+
 /// Entry Point of the UEFI Loader
 /// This function gets a so-called "EFI System Table" (see UEFI Specification, Section 4: EFI System Table) from the Firmware Interface.
 /// Here, the RSDP (for BOOT_INFO) and the kernel are located and the kernel is parsed and loaded into memory.
