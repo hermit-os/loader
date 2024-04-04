@@ -14,6 +14,8 @@ use core::slice;
 #[cfg(target_os = "uefi")]
 use crate::framebuffer;
 use align_address::Align;
+#[cfg(target_os = "uefi")]
+use core::fmt::Write;
 #[cfg(all(target_os = "none", not(feature = "fc")))]
 use hermit_entry::boot_info::DeviceTreeAddress;
 use hermit_entry::boot_info::{BootInfo, HardwareInfo, PlatformInfo, RawBootInfo, SerialPortBase};
@@ -129,7 +131,7 @@ pub unsafe fn boot_kernel(
 
 	let kernel_end = kernel_addr + filesize as u64;
 	info!("kernel_end at: {:#x}", kernel_end);
-	fbwriter.write("kernel_end at", Some(kernel_end.try_into().unwrap()));
+	writeln!(fbwriter, "kernel_end at {kernel_end}").unwrap();
 	// determine boot stack address
 	let mut new_stack = align_up(kernel_end, Size4KiB::SIZE);
 
@@ -162,17 +164,23 @@ pub unsafe fn boot_kernel(
 	}
 
 	info!("BootInfo located at {:#x}", &BOOT_INFO as *const _ as u64);
-	fbwriter.write("BootInfo located at", Some(&BOOT_INFO as *const _ as usize));
+	writeln!(
+		fbwriter,
+		"BootInfo located at {}",
+		&BOOT_INFO as *const _ as usize
+	)
+	.unwrap();
 
 	// Jump to the kernel entry point and provide the BOOT_INFO as well.
 	info!(
 		"Jumping to Hermit Application Entry Point at {:#x}",
 		entry_point
 	);
-	fbwriter.write(
-		"Jumping to Hermit Application Entry Point at",
-		Some(entry_point.try_into().unwrap()),
-	);
+	writeln!(
+		fbwriter,
+		"Jumping to Hermit Application Entry Point at {entry_point}"
+	)
+	.unwrap();
 
 	unsafe {
 		asm!(
