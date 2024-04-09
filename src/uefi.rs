@@ -2,6 +2,7 @@ extern crate alloc;
 use crate::{arch, framebuffer::*};
 //use crate::arch;
 use alloc::vec::Vec;
+use core::fmt::Write;
 use core::{mem, slice};
 
 #[allow(unused_imports)]
@@ -52,16 +53,11 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 		.open_protocol_exclusive::<GraphicsOutput>(gop_handle)
 		.unwrap();
 
-	let mut framebuffer = get_framebuffer(&mut gop);
-	let mut fbwriter = FramebufWriter::new(framebuffer);
-	info!("Hello World from UEFI boot!");
-	fbwriter.write("Hello World from UEFI boot!", None);
 
 	info!("GOP Mode info: {:#?}", gop.current_mode_info());
-	let mut framebuffer = get_framebuffer(&mut gop);
-	let mut fbwriter = FramebufWriter::new(framebuffer);
+	let mut fbwriter = FramebufWriter::new(get_framebuffer(&mut gop));
 	info!("Hello World from UEFI boot!");
-	fbwriter.write("Hello World from UEFI boot!", None);
+	writeln!(fbwriter, "Hello World from UEFI boot!").unwrap();
 
 	// GOP needs to be dropped in order to exit boot services later and we only need the raw pointer to the framebuffer (which still exists after the GOP has been dropped)
 	drop(gop);
@@ -81,11 +77,12 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 
 	let kernel = KernelObject::parse(&kernel_bytes).unwrap();
 
-	fbwriter.write("Kernel parsed!", None);
+	writeln!(fbwriter, "Kernel parsed!").unwrap();
+
 	info!("Kernel parsed!");
 	let filesize = kernel.mem_size();
 	info!("Kernelsize: {:#?}", filesize);
-	fbwriter.write("Kernelsize", Some(filesize));
+	writeln!(fbwriter, "Kernelsize: {filesize}").unwrap();
 
 	// allocate space for the kernel
 	let kernel_addr = bs
@@ -97,13 +94,13 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 		.unwrap();
 
 	let kernel_addr = kernel.start_addr().unwrap_or(kernel_addr);
-	fbwriter.write("Kernel located at", Some(kernel_addr.try_into().unwrap()));
+	writeln!(fbwriter, "Kernel located at {}", kernel_addr).unwrap();
 	info!("Kernel located at {:#x}", kernel_addr);
 	let memory =
 		unsafe { slice::from_raw_parts_mut(kernel_addr as *mut mem::MaybeUninit<u8>, filesize) };
 
 	let kernel_info = kernel.load_kernel(memory, memory.as_ptr() as u64);
-	fbwriter.write("Kernel loaded into memory", None);
+	writeln!(fbwriter, "Kernel loaded into memory").unwrap();
 	info!("Kernel loaded into memory");
 
 	// exit boot services for getting a runtime view of the system table and an iterator to the UEFI memory map
@@ -130,8 +127,8 @@ unsafe fn loader_main(_handle: Handle, mut system_table: SystemTable<Boot>) -> S
 		.unwrap()
 		.phys_start as usize;
 	let end_address = start_address + (max_size as usize * 0x1000_usize) - 1;
-	fbwriter.write("Kernelmemory start address", Some(start_address));
-	fbwriter.write("Kernelmemory end address", Some(end_address));
+	writeln!(fbwriter, "Kernelmemory start address: {}", start_address).unwrap();
+	writeln!(fbwriter, "Kernelmemory end address: {end_address}").unwrap();
 
 	info!("Kernelmemory: start: {start_address:#x?}, end: {end_address:#x?}");
 
