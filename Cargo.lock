@@ -303,7 +303,6 @@ dependencies = [
  "multiboot",
  "naked-function",
  "one-shot-mutex",
- "qemu-exit",
  "riscv",
  "sbi-rt",
  "sptr",
