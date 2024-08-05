@@ -54,3 +54,6 @@ codegen-units = 1
 members = [
 	"xtask",
 ]
+
+[patch.crates-io]
+hermit-entry = { git = "https://github.com/hermit-os/hermit-entry.git", branch = "more-reloc"}
