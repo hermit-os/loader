@@ -47,7 +47,7 @@ impl Firecracker {
 
 		let log_path = Path::new("firecracker.log");
 		sh.write_file(log_path, "")?;
-		let res = cmd!(sh, "{program} {arg...} --no-api --config-file {config_path} --log-path {log_path} --level Info --show-level --show-log-origin").run();
+		let res = cmd!(sh, "{program} {arg...} --no-api --config-file {config_path} --log-path {log_path} --level Trace --show-level --show-log-origin").run();
 		let log = sh.read_file(log_path)?;
 
 		eprintln!("firecracker log");
