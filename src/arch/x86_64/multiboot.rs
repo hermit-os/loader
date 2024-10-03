@@ -6,7 +6,7 @@ use align_address::Align;
 use hermit_entry::boot_info::{
 	BootInfo, DeviceTreeAddress, HardwareInfo, PlatformInfo, SerialPortBase,
 };
-use hermit_entry::elf::LoadedKernel;
+use hermit_entry::elf::{KernelObject, LoadedKernel};
 use log::info;
 use multiboot::information::{MemoryManagement, MemoryType, Multiboot, PAddr};
 use sptr::Strict;
@@ -92,8 +92,6 @@ impl DeviceTree {
 }
 
 pub fn find_kernel() -> &'static [u8] {
-	use core::cmp;
-
 	paging::clean_up();
 	// Identity-map the Multiboot information.
 	unsafe {
@@ -139,12 +137,6 @@ pub fn find_kernel() -> &'static [u8] {
 	let elf_len = end_address - start_address;
 	info!("Module length: {:#x}", elf_len);
 
-	let free_memory_address = end_address.align_up(Size2MiB::SIZE as usize);
-	// TODO: Workaround for https://github.com/hermitcore/loader/issues/96
-	let free_memory_address = cmp::max(free_memory_address, 0x800000);
-	// Memory after the highest end address is unused and available for the physical memory manager.
-	PhysAlloc::init(free_memory_address);
-
 	// Identity-map the ELF header of the first module.
 	assert!(
 		found_module,
@@ -165,7 +157,21 @@ pub fn find_kernel() -> &'static [u8] {
 		paging::map::<Size2MiB>(address, address, counter, PageTableFlags::empty());
 	}
 
-	unsafe { slice::from_raw_parts(sptr::from_exposed_addr(elf_start), elf_len) }
+	let elf_slice = unsafe { slice::from_raw_parts(sptr::from_exposed_addr(elf_start), elf_len) };
+
+	// This is mostly a workaround, as it does not really ensure that the memory allocated to load the kernel
+	// will include the required start address. If the structure of the surrounding code at the time of writing
+	// of this section changes, an allocation that will overlap with the kernel load section can be made or the
+	// allocation granularity of the kernel load section can get smaller in a way that will not cover the whole need.
+	let kernel = KernelObject::parse(elf_slice).unwrap();
+	let free_memory_address = kernel.start_addr().map_or(
+		end_address.align_up(Size2MiB::SIZE as usize),
+		|start_addr| start_addr.align_down(Size2MiB::SIZE).try_into().unwrap(),
+	);
+	// Memory after the highest end address is unused and available for the physical memory manager.
+	PhysAlloc::init(free_memory_address);
+
+	elf_slice
 }
 
 pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
