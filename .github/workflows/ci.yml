@@ -122,6 +122,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
             lfs: true
+      - run: git lfs pull
+      - run: git lfs checkout
       - name: Install firecracker
         run: |
           # https://github.com/firecracker-microvm/firecracker/blob/v1.5.1/docs/getting-started.md#getting-a-firecracker-binary
