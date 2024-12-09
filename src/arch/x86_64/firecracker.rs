@@ -94,8 +94,8 @@ pub fn find_kernel() -> &'static [u8] {
 	let free_memory_address = ptr::addr_of!(loader_end)
 		.addr()
 		.align_up(Size2MiB::SIZE as usize);
-	// TODO: Workaround for https://github.com/hermitcore/loader/issues/96
-	let free_memory_address = cmp::max(free_memory_address, 0x800000);
+	// // TODO: Workaround for https://github.com/hermitcore/loader/issues/96
+	// let free_memory_address = cmp::max(free_memory_address, 0x800000);
 	info!("Intialize PhysAlloc with {:#x}", free_memory_address);
 	// Memory after the highest end address is unused and available for the physical memory manager.
 	PhysAlloc::init(free_memory_address);
@@ -108,12 +108,12 @@ pub fn find_kernel() -> &'static [u8] {
 	paging::map::<Size4KiB>(page_address, page_address, counter, PageTableFlags::empty());
 
 	// map also the rest of the module
-	let address = elf_start.align_up(Size2MiB::SIZE as usize);
-	let counter = ((elf_start + elf_len).align_up(Size2MiB::SIZE as usize) - address)
-		/ Size2MiB::SIZE as usize;
-	if counter > 0 {
-		paging::map::<Size2MiB>(address, address, counter, PageTableFlags::empty());
-	}
+	// let address = elf_start.align_up(Size2MiB::SIZE as usize);
+	// let counter = ((elf_start + elf_len).align_up(Size2MiB::SIZE as usize) - address)
+	// 	/ Size2MiB::SIZE as usize;
+	// if counter > 0 {
+	// 	paging::map::<Size2MiB>(address, address, counter, PageTableFlags::empty());
+	// }
 
 	unsafe { slice::from_raw_parts(sptr::from_exposed_addr(elf_start), elf_len) }
 }
