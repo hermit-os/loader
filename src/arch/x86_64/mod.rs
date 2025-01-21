@@ -9,8 +9,10 @@ cfg_if::cfg_if! {
 }
 
 mod console;
+mod devicetree;
 #[cfg(target_os = "none")]
 mod paging;
+pub(crate) mod pci;
 #[cfg(target_os = "none")]
 mod physicalmem;
 

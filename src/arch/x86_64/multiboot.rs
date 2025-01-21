@@ -14,13 +14,14 @@ use x86_64::structures::paging::{PageSize, PageTableFlags, Size2MiB, Size4KiB};
 
 use super::paging;
 use super::physicalmem::PhysAlloc;
+use crate::arch::x86_64::devicetree::DeviceTree;
 use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT};
 use crate::fdt::Fdt;
 use crate::BootInfoExt;
 
 extern "C" {
 	static mut loader_end: u8;
-	static mb_info: usize;
+	pub(crate) static mb_info: usize;
 }
 
 #[allow(bad_asm_style)]
@@ -28,7 +29,7 @@ mod entry {
 	core::arch::global_asm!(include_str!("entry.s"));
 }
 
-struct Mem;
+pub(crate) struct Mem;
 
 impl MemoryManagement for Mem {
 	unsafe fn paddr_to_slice<'a>(&self, p: PAddr, sz: usize) -> Option<&'static [u8]> {
@@ -45,29 +46,6 @@ impl MemoryManagement for Mem {
 		if addr != 0 {
 			unimplemented!()
 		}
-	}
-}
-
-pub struct DeviceTree;
-
-impl DeviceTree {
-	pub fn create() -> FdtWriterResult<&'static [u8]> {
-		let mut mem = Mem;
-		let multiboot = unsafe { Multiboot::from_ptr(mb_info as u64, &mut mem).unwrap() };
-
-		let memory_regions = multiboot
-			.memory_regions()
-			.expect("Could not find a memory map in the Multiboot information");
-
-		let mut fdt = Fdt::new("multiboot")?.memory_regions(memory_regions)?;
-
-		if let Some(cmdline) = multiboot.command_line() {
-			fdt = fdt.bootargs(cmdline)?;
-		}
-
-		let fdt = fdt.finish()?;
-
-		Ok(fdt.leak())
 	}
 }
 
