@@ -68,6 +68,8 @@ impl DeviceTree {
 			fdt = fdt.bootargs(cmdline)?;
 		}
 
+		fdt = fdt.pci()?;
+
 		let fdt = fdt.finish()?;
 
 		Ok(fdt.leak())
