@@ -16,11 +16,14 @@ log = "0.4"
 one-shot-mutex = "0.1"
 sptr = "0.3"
 take-static = "0.1"
+uefi-raw = "0.11.0"
 vm-fdt = { version = "0.3", default-features = false, features = ["alloc"] }
 
 [features]
 default = []
 fc = []
+# If enabled, will refuse to boot if not in secure boot mode
+require-secure-boot = []
 
 [target.'cfg(all(target_os = "none", target_arch = "x86_64"))'.dependencies]
 multiboot = "0.8"

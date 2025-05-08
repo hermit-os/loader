@@ -1,5 +1,6 @@
 mod allocator;
 mod console;
+mod secure_boot;
 
 use alloc::vec::Vec;
 use core::ffi::c_void;
@@ -65,6 +66,9 @@ fn read_app() -> Vec<u8> {
 
 	let len = data.len();
 	info!("Read Hermit application from \"{path}\" (size = {len} B)");
+
+	// Verify the image is correct before continuing
+	secure_boot::verify_image_or_panic(&data);
 
 	data
 }

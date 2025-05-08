@@ -416,6 +416,7 @@ dependencies = [
  "take-static",
  "uart_16550",
  "uefi",
+ "uefi-raw 0.11.0",
  "vm-fdt",
  "x86_64",
 ]
@@ -941,7 +942,7 @@ dependencies = [
  "qemu-exit",
  "ucs2",
  "uefi-macros",
- "uefi-raw",
+ "uefi-raw 0.10.0",
  "uguid",
 ]
 
@@ -961,6 +962,16 @@ name = "uefi-raw"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d246ed5d6fd71c0331f0ac774a6aefb6cb9170a46f83148cacc70b09f82c87bb"
+dependencies = [
+ "bitflags 2.8.0",
+ "uguid",
+]
+
+[[package]]
+name = "uefi-raw"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cad96b8baaf1615d3fdd0f03d04a0b487d857c1b51b19dcbfe05e2e3c447b78"
 dependencies = [
  "bitflags 2.8.0",
  "uguid",
