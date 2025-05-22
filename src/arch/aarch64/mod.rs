@@ -1,5 +1,7 @@
 mod console;
+
 pub use self::console::Console;
+pub mod drivers;
 pub mod entry;
 pub mod paging;
 
