@@ -31,6 +31,8 @@ x86_64 = { version = "0.15", default-features = false, features = ["instructions
 aarch64-cpu = "9"
 hermit-dtb = { version = "0.1" }
 goblin = { version = "0.8", default-features = false, features = ["elf64"] }
+volatile =  { version = "0.6.1", features = ["derive"] }
+enum_dispatch = "0.3.13"
 
 [target.'cfg(target_os = "none")'.dependencies]
 allocator-api2 = { version = "0.2", default-features = false }
