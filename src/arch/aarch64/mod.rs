@@ -6,8 +6,10 @@ pub mod entry;
 pub mod paging;
 
 use core::arch::asm;
-use core::ptr::{self, NonNull};
+use core::ptr::{self};
+use core::str;
 
+use aarch64_cpu::asm::barrier::{dmb, dsb, isb, NSH, SY};
 use align_address::Align;
 use goblin::elf::header::header64::{Header, EI_DATA, ELFDATA2LSB, ELFMAG, SELFMAG};
 use hermit_dtb::Dtb;
@@ -15,7 +17,6 @@ use hermit_entry::boot_info::{BootInfo, HardwareInfo, PlatformInfo, RawBootInfo,
 use hermit_entry::elf::LoadedKernel;
 use hermit_entry::Entry;
 use log::info;
-use sptr::Strict;
 
 use crate::arch::paging::*;
 use crate::os::CONSOLE;
@@ -57,7 +58,8 @@ pub fn find_kernel() -> &'static [u8] {
 		Dtb::from_raw(sptr::from_exposed_addr(DEVICE_TREE as usize))
 			.expect(".dtb file has invalid header")
 	};
-
+	let property = dtb.get_property("/chosen", "stdout-path");
+	info!("{}", str::from_utf8(&property.unwrap()).unwrap());
 	let module_start = dtb
 		.enum_subnodes("/chosen")
 		.find(|node| node.starts_with("module@"))
@@ -78,7 +80,7 @@ pub fn find_kernel() -> &'static [u8] {
 	};
 
 	if header.e_ident[0..SELFMAG] != ELFMAG[..] {
-		panic!("Don't found valid ELF file!");
+		panic!("Didn't find valid ELF file!");
 	}
 
 	#[cfg(target_endian = "little")]
@@ -120,7 +122,7 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		.count();
 	info!("Detect {} CPU(s)", cpus);
 
-	let uart_address: u32 = CONSOLE.lock().get().get_stdout().as_ptr() as u32;
+	let uart_address: u32 = CONSOLE.lock().get().get_stdout();
 	info!("Detect UART at {:#x}", uart_address);
 
 	let pgt_slice = unsafe { core::slice::from_raw_parts_mut(ptr::addr_of_mut!(l0_pgtable), 512) };
@@ -166,10 +168,7 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		*entry = RAM_START + (i * BasePageSize::SIZE) as u64 + PT_MEM;
 	}
 
-	CONSOLE
-		.lock()
-		.get()
-		.set_stdout(NonNull::new(0x1000 as *mut u8).unwrap());
+	CONSOLE.lock().get().set_stdout(0x1000);
 
 	// Load TTBRx
 	unsafe {
@@ -196,23 +195,30 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		);
 	}
 
+	info!("Successfully set up paging.");
+
 	let dtb = unsafe {
 		Dtb::from_raw(sptr::from_exposed_addr(DEVICE_TREE as usize))
 			.expect(".dtb file has invalid header")
 	};
 
 	if let Some(device_type) = dtb.get_property("/memory", "device_type") {
+		dbg!(device_type);
 		let device_type = core::str::from_utf8(device_type)
 			.unwrap()
 			.trim_matches(char::from(0));
 		assert!(device_type == "memory");
 	}
+	info!("Memory found!");
+	let reg = dtb.get_property("/memory", "reg");
+	let mut slice_iter = reg.unwrap().chunks(core::mem::size_of::<u64>());
+	let ram_start = u64::from_be_bytes(slice_iter.next().unwrap().try_into().unwrap());
+	let ram_size = u64::from_be_bytes(slice_iter.next().unwrap().try_into().unwrap());
 
-	let reg = dtb.get_property("/memory", "reg").unwrap();
-	let (start_slice, size_slice) = reg.split_at(core::mem::size_of::<u64>());
-	let ram_start = u64::from_be_bytes(start_slice.try_into().unwrap());
-	let ram_size = u64::from_be_bytes(size_slice.try_into().unwrap());
-
+	info!(
+		"ram_start: {:#x}, ram_size: {:#x}. Trying to jump into kernel soon.",
+		ram_start, ram_size
+	);
 	let boot_info = BootInfo {
 		hardware_info: HardwareInfo {
 			phys_addr_range: ram_start..ram_start + ram_size,
@@ -238,13 +244,15 @@ unsafe fn enter_kernel(stack: *mut u8, entry: *const (), raw_boot_info: &'static
 			unsafe { core::mem::transmute(entry) };
 		entry
 	};
-
+	dbg!(entry);
 	info!("Entering kernel at {entry:p}, stack at {stack:p}, raw_boot_info at {raw_boot_info:p}");
 
 	// Memory barrier
-	unsafe {
-		asm!("dsb sy", options(nostack));
-	}
+	CONSOLE.lock().get().wait_empty();
+	dsb(SY);
+	isb(SY);
+	dmb(SY);
+	dsb(NSH);
 
 	unsafe {
 		asm!(
