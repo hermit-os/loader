@@ -3,7 +3,6 @@
 use core::arch::{asm, global_asm};
 
 use aarch64_cpu::registers::{Writeable, SCTLR_EL1};
-use log::info;
 
 extern "C" {
 	fn loader_main();
@@ -58,8 +57,6 @@ pub unsafe fn _start_rust() -> ! {
 }
 
 unsafe fn pre_init() -> ! {
-	info!("Enter startup code");
-
 	/* disable interrupts */
 	unsafe {
 		asm!("msr daifset, 0b111", options(nostack));
