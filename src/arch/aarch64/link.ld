@@ -49,4 +49,5 @@ SECTIONS
                                        /*   | direction   */
   __boot_core_stack_end_exclusive = .; /*   |             */
   loader_end = .;
+  prog_size = loader_end - loader_start;
 }

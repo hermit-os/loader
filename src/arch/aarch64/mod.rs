@@ -27,6 +27,7 @@ extern "C" {
 	static mut l2k_pgtable: u64;
 	static mut l3_pgtable: u64;
 	static mut L0mib_pgtable: u64;
+	static mut dtb_addr: u64;
 }
 
 /// start address of the RAM at Qemu's virt emulation

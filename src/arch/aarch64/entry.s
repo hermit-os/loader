@@ -26,6 +26,10 @@ _start:
 
 	// If execution reaches here, it is the boot core. Now, prepare the jump to Rust code.
 
+    // First: Save the dtb address!
+    adr x8, dtb_addr
+    str x0, [x8, 0]
+
 	// This loads the physical address of the stack end. For details see
 	// https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials/blob/master/16_virtual_mem_part4_higher_half_kernel/src/bsp/raspberrypi/link.ld
 	adrp	x4, __boot_core_stack_end_exclusive
@@ -83,3 +87,5 @@ L16mib_pgtable:
     .space 512*8, 0
 L18mib_pgtable:
     .space 512*8, 0
+dtb_addr:
+    .space 8, 0
