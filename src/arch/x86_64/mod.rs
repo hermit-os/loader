@@ -11,6 +11,8 @@ cfg_if::cfg_if! {
 mod console;
 #[cfg(target_os = "none")]
 mod paging;
+#[cfg(all(target_arch = "x86_64", not(target_os = "uefi"), not(feature = "fc")))]
+pub(crate) mod pci;
 #[cfg(target_os = "none")]
 mod physicalmem;
 
