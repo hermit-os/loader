@@ -42,7 +42,7 @@ jobs:
     name: Run
     strategy:
       matrix:
-        target: [x86_64, aarch64, riscv64]
+        target: [x86_64, aarch64, aarch64_be, riscv64]
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - target: x86_64
@@ -84,7 +84,11 @@ jobs:
         with:
             lfs: true
       - name: Install stable Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          # FIXME: Use rust-toolchain@stable and remove this when 1.91 is stable
+          toolchain: ${{ matrix.target == 'aarch64_be' && 'nightly' || 'stable' }}
+          components: ${{ matrix.target == 'aarch64_be' && 'rust-src' || '' }}
       - name: Dowload OpenSBI
         if: matrix.target == 'riscv64'
         run: |
