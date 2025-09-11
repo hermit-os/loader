@@ -1,6 +1,7 @@
 mod allocator;
 mod console;
 
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::ffi::c_void;
 use core::mem::MaybeUninit;
@@ -45,6 +46,12 @@ fn main() -> Status {
 		.rsdp(u64::try_from(rsdp.expose_addr()).unwrap())
 		.unwrap();
 
+	let fdt = if let Some(bootargs) = read_bootargs() {
+		fdt.bootargs(bootargs).unwrap()
+	} else {
+		fdt
+	};
+
 	allocator::exit_boot_services();
 	let mut memory_map = unsafe { boot::exit_boot_services(None) };
 
@@ -67,6 +74,15 @@ fn read_app() -> Vec<u8> {
 	info!("Read Hermit application from \"{path}\" (size = {len} B)");
 
 	data
+}
+
+fn read_bootargs() -> Option<String> {
+	let image_handle = boot::image_handle();
+	let fs = boot::get_image_file_system(image_handle).expect("should open file system");
+
+	let path = Path::new(cstr16!(r"\efi\boot\hermit-args"));
+	let data = FileSystem::new(fs).read(path).ok()?;
+	Some(String::from_utf8(data).expect("hermit-args should contain valid UTF-8 data if present"))
 }
 
 pub unsafe fn boot_kernel(kernel_info: LoadedKernel, fdt: Vec<u8>) -> ! {
