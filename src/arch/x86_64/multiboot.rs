@@ -1,3 +1,4 @@
+use alloc::string::String;
 use core::ptr::write_bytes;
 use core::{mem, ptr, slice};
 
@@ -65,7 +66,7 @@ impl DeviceTree {
 		let mut fdt = Fdt::new("multiboot")?.memory_regions(memory_regions)?;
 
 		if let Some(cmdline) = multiboot.command_line() {
-			fdt = fdt.bootargs(cmdline)?;
+			fdt = fdt.bootargs(String::from(cmdline))?;
 		}
 
 		let fdt = fdt.finish()?;

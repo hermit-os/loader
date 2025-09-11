@@ -76,7 +76,7 @@ mod x86_64 {
 	use multiboot::information::{MemoryMapIter, MemoryType};
 	use vm_fdt::FdtWriterResult;
 
-	impl super::Fdt<'_> {
+	impl super::Fdt {
 		pub fn memory_regions(
 			mut self,
 			memory_regions: MemoryMapIter<'_, '_>,
