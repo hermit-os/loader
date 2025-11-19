@@ -30,6 +30,11 @@ fn main() -> Status {
 	crate::log::init();
 
 	let kernel_image = read_app();
+
+	let allocator = todo!();
+	let mut buf = None;
+	let (kernel_image, _) = crate::resolve_kernel(&kernel_image, allocator, &mut buf);
+
 	let kernel = KernelObject::parse(&kernel_image).unwrap();
 
 	let kernel_memory = alloc_page_slice(kernel.mem_size()).unwrap();

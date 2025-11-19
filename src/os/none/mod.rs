@@ -26,6 +26,11 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
 	}
 
 	let kernel = arch::find_kernel();
+
+	let allocator = todo!();
+	let mut buf = None;
+	let (kernel, _) = crate::resolve_kernel(kernel, allocator, &mut buf);
+
 	let kernel = KernelObject::parse(kernel).unwrap();
 
 	let mem_size = kernel.mem_size();
