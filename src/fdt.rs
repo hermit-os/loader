@@ -9,6 +9,7 @@ pub struct Fdt {
 	writer: FdtWriter,
 	root_node: FdtWriterNode,
 	bootargs: Option<String>,
+	image_range: Option<(u64, u64)>,
 }
 
 impl Fdt {
@@ -31,9 +32,15 @@ impl Fdt {
 
 	pub fn finish(mut self) -> FdtWriterResult<Vec<u8>> {
 		let chosen_node = self.writer.begin_node("chosen")?;
+
 		if let Some(bootargs) = &self.bootargs {
 			self.writer.property_string("bootargs", bootargs)?;
 		}
+
+		if let Some((image_start, image_len)) = self.image_range {
+			self.writer_property_array_u64("image_reg", &[image_start, image_len])?;
+		}
+
 		self.writer.end_node(chosen_node)?;
 
 		self.writer.end_node(self.root_node)?;
@@ -44,6 +51,14 @@ impl Fdt {
 	pub fn bootargs(mut self, bootargs: String) -> FdtWriterResult<Self> {
 		assert!(self.bootargs.is_none());
 		self.bootargs = Some(bootargs);
+
+		Ok(self)
+	}
+
+	pub fn image_range(mut self, image: &[u8]) -> FdtWriterResult<Self> {
+		assert!(self.image_range.is_none() && !image.is_empty());
+		let image_start = (&image[0]) as *const u8;
+		self.image_range = Some((image_start as u64, image.len() as u64);
 
 		Ok(self)
 	}

@@ -30,7 +30,14 @@ fn main() -> Status {
 	crate::log::init();
 
 	let kernel_image = read_app();
-	let kernel = KernelObject::parse(&kernel_image).unwrap();
+
+	// TODO: we can't use the allocator because if we have a compressed image laying around
+	// it needs to survive the `exit_boot_services` step below.
+	let allocator = todo!();
+	let mut buf = None;
+	let (kernel_image2, _) = crate::resolve_kernel(&kernel_image, allocator, &mut buf);
+
+	let kernel = KernelObject::parse(&kernel_image2).unwrap();
 
 	let kernel_memory = alloc_page_slice(kernel.mem_size()).unwrap();
 	let kernel_memory = &mut kernel_memory[..kernel.mem_size()];
@@ -39,6 +46,7 @@ fn main() -> Status {
 
 	let rsdp = rsdp();
 
+	drop(kernel_image2);
 	drop(kernel_image);
 
 	let mut fdt = Fdt::new("uefi")
@@ -48,6 +56,11 @@ fn main() -> Status {
 
 	if let Some(bootargs) = read_bootargs() {
 		fdt = fdt.bootargs(bootargs).unwrap();
+	}
+
+	if let Some(tar_image) = buf {
+		let tar_image = allocator_api2::boxed::Box::leak(tar_image);
+		fdt = fdt.image_range(&tar_image[..]);
 	}
 
 	allocator::exit_boot_services();

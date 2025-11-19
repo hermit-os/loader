@@ -26,6 +26,11 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
 	}
 
 	let kernel = arch::find_kernel();
+
+	let allocator = todo!();
+	let mut buf = None;
+	let (kernel, _) = crate::resolve_kernel(kernel, allocator, &mut buf);
+
 	let kernel = KernelObject::parse(kernel).unwrap();
 
 	let mem_size = kernel.mem_size();
@@ -37,6 +42,9 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
 			mem_size,
 		)
 	};
+
+	// if we have an image here, we can't pass where it is to the kernel,
+	// due to lack of FDT -> it is probably necessary to pass it to `boot_kernel`
 
 	let kernel_info = kernel.load_kernel(memory, memory.as_ptr() as u64);
 
