@@ -12,7 +12,9 @@ use hermit_entry::boot_info::{BootInfo, RawBootInfo};
 mod macros;
 
 mod arch;
+
 mod bump_allocator;
+
 #[cfg(any(target_os = "uefi", target_arch = "x86_64"))]
 mod fdt;
 mod log;
@@ -44,4 +46,39 @@ fn _print(args: core::fmt::Arguments<'_>) {
 	use core::fmt::Write;
 
 	self::os::CONSOLE.lock().write_fmt(args).unwrap();
+}
+
+/// Detects the input format are resolves the kernel
+fn resolve_kernel<'a, A: allocator_api2::alloc::Allocator>(
+	input_blob: &[u8],
+	alloc: A,
+	buf: &'a mut Option<allocator_api2::boxes::Box<hermit_entry::tar_parser::Bytes, A>>,
+) -> (&'a [u8], Option<hermit_entry::config::Config>) {
+	use hermit_entry::{Format, ThinTree, decompress_image_with_allocator, detect_format};
+	match detect_format(input_blob) {
+		Some(Format::Elf) => (input_blob, None),
+
+		Some(Format::Gzip) => {
+			*buf = Some(
+				decompress_image_with_allocator(input_blob, alloc)
+					.expect("Unable to decompress Hermit gzip image"),
+			);
+			let tmp = buf.as_mut().unwrap();
+
+			let image_tree =
+				ThinTree::try_from_image(&tmp).expect("Unable to parse Hermit image tarball");
+
+			let (config, kernel) = image_tree
+				.handle_config()
+				.expect("Unable to find Hermit image configuration + kernel");
+
+			// TODO: do we just let the kernel handle the config
+
+			(kernel, Some(config))
+		}
+
+		None => {
+			panic!("Input BLOB has unknown magic bytes (neither Gzip nor ELF)")
+		}
+	}
 }

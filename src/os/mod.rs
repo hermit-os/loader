@@ -7,3 +7,9 @@ cfg_if::cfg_if! {
 		pub use self::uefi::*;
 	}
 }
+
+//#[cfg(any(target_os = "none", feature = "fc"))]
+#[derive(Clone)]
+pub struct ExtraBootInfo {
+	pub(crate) image: Option<&'static [u8]>,
+}

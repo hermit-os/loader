@@ -2,6 +2,8 @@
 
 mod bootstrap;
 
+pub mod oneshot;
+
 use core::ptr;
 use core::ptr::NonNull;
 
