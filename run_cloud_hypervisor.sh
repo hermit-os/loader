@@ -57,5 +57,5 @@ sudo ./cloud-hypervisor-static \
       --memory size=4G \
       --serial tty \
       --console off \
-      --net "tap=,mac=,ip=10.0.5.1,mask=" \
+      --net "tap=,mac=,ip=10.0.5.1,mask=255.255.255.0" \
       --disk path=esp.fat | tee foo
