@@ -16,6 +16,7 @@ use crate::BootInfoExt;
 use crate::arch::x86_64::physicalmem::PhysAlloc;
 use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, paging};
 use crate::fdt::Fdt;
+use crate::os::ExtraBootInfo;
 
 unsafe extern "C" {
 	static mut loader_end: u8;
@@ -51,7 +52,7 @@ pub fn find_kernel() -> &'static [u8] {
 	boot_params_ref.map_ramdisk().unwrap()
 }
 
-pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
+pub unsafe fn boot_kernel(kernel_info: LoadedKernel, extra_info: ExtraBootInfo) -> ! {
 	let LoadedKernel {
 		load_info,
 		entry_point,
@@ -74,7 +75,12 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		write_bytes(stack, 0, KERNEL_STACK_SIZE.try_into().unwrap());
 	}
 
-	let mut fdt = Fdt::new("linux").unwrap();
+	let maybe_image = match extra_info.image {
+		None => &[],
+		Some(tar_image) => tar_image,
+	};
+
+	let mut fdt = Fdt::new("linux", maybe_image).unwrap();
 
 	let e820_entries = boot_params_ref.e820_entries();
 	assert!(!e820_entries.is_empty());

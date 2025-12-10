@@ -12,13 +12,14 @@ use hermit_entry::boot_info::{BootInfo, RawBootInfo};
 mod macros;
 
 mod arch;
+
 mod bump_allocator;
+
 #[cfg(any(target_os = "uefi", target_arch = "x86_64"))]
 mod fdt;
 mod log;
 mod os;
 
-#[cfg(any(target_os = "uefi", all(target_arch = "x86_64", target_os = "none")))]
 extern crate alloc;
 
 mod built_info {
@@ -74,4 +75,42 @@ fn _print(args: core::fmt::Arguments<'_>) {
 	use core::fmt::Write;
 
 	self::os::CONSOLE.lock().write_fmt(args).unwrap();
+}
+
+/// Detects the input format are resolves the kernel
+fn resolve_kernel<'a>(
+	input_blob: &'a [u8],
+	buf: &'a mut Option<alloc::boxed::Box<[u8]>>,
+) -> (&'a [u8], Option<hermit_entry::config::Config<'a>>) {
+	use hermit_entry::{Format, detect_format};
+	match detect_format(input_blob) {
+		Some(Format::Elf) => (input_blob, None),
+
+		Some(Format::Gzip) => {
+			use compression::prelude::{DecodeExt as _, GZipDecoder};
+			*buf = Some(
+				input_blob
+					.iter()
+					.copied()
+					.decode(&mut GZipDecoder::new())
+					.collect::<Result<alloc::boxed::Box<[u8]>, _>>()
+					.expect("Unable to decompress Hermit gzip image"),
+			);
+			match *buf {
+				Some(ref mut tmp) => {
+					let handle = hermit_entry::config::parse_tar(tmp)
+						.expect("Unable to find Hermit image configuration + kernel");
+
+					// TODO: do we just let the kernel handle the config
+
+					(handle.raw_kernel, Some(handle.config))
+				}
+				None => unreachable!(),
+			}
+		}
+
+		None => {
+			panic!("Input BLOB has unknown magic bytes (neither Gzip nor ELF)")
+		}
+	}
 }

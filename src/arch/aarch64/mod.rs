@@ -19,7 +19,7 @@ use log::info;
 
 use crate::BootInfoExt;
 use crate::arch::paging::*;
-use crate::os::CONSOLE;
+use crate::os::{CONSOLE, ExtraBootInfo};
 
 unsafe extern "C" {
 	static mut loader_end: u8;
@@ -106,11 +106,13 @@ pub fn find_kernel() -> &'static [u8] {
 	}
 }
 
-pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
+pub unsafe fn boot_kernel(kernel_info: LoadedKernel, extra_info: ExtraBootInfo) -> ! {
 	let LoadedKernel {
 		load_info,
 		entry_point,
 	} = kernel_info;
+
+	assert!(extra_info.image.is_none());
 
 	let fdt = unsafe {
 		Fdt::from_ptr(ptr::with_exposed_provenance(DEVICE_TREE as usize))
