@@ -29,21 +29,38 @@ fn main() -> Status {
 	uefi::helpers::init().unwrap();
 	crate::log::init();
 
-	let kernel_image = read_app();
-	let kernel = KernelObject::parse(&kernel_image).unwrap();
+	let allocator = allocator_api2::alloc::Global;
 
-	let kernel_memory = alloc_page_slice(kernel.mem_size()).unwrap();
-	let kernel_memory = &mut kernel_memory[..kernel.mem_size()];
+	let kernel;
+	let kernel_memory;
+	let kernel_info;
+	let rsdp_: *const _;
+	let maybe_image: &[u8];
 
-	let kernel_info = kernel.load_kernel(kernel_memory, kernel_memory.as_ptr() as u64);
+	{
+		let mut buf = None;
+		let kernel_image = read_app();
 
-	let rsdp = rsdp();
+		let (kernel_image2, _) = crate::resolve_kernel(&kernel_image, allocator, &mut buf);
 
-	drop(kernel_image);
+		kernel = KernelObject::parse(&kernel_image2).unwrap();
 
-	let mut fdt = Fdt::new("uefi")
+		let kernel_memory2 = alloc_page_slice(kernel.mem_size()).unwrap();
+		kernel_memory = &mut kernel_memory2[..kernel.mem_size()];
+
+		kernel_info = kernel.load_kernel(kernel_memory, kernel_memory.as_ptr() as u64);
+
+		rsdp_ = rsdp();
+
+		maybe_image = match buf {
+			None => &[],
+			Some(tar_image) => (&*allocator_api2::boxed::Box::leak(tar_image)).into(),
+		}
+	}
+
+	let mut fdt = Fdt::new("uefi", maybe_image)
 		.unwrap()
-		.rsdp(u64::try_from(rsdp.expose_addr()).unwrap())
+		.rsdp(u64::try_from(rsdp_.expose_addr()).unwrap())
 		.unwrap();
 
 	if let Some(bootargs) = read_bootargs() {
