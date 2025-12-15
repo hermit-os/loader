@@ -17,6 +17,7 @@ use log::info;
 use sptr::Strict;
 
 use crate::BootInfoExt;
+use crate::os::ExtraBootInfo;
 
 fn find_kernel_linux(chosen: &FdtNode<'_, '_>) -> Option<&'static [u8]> {
 	let initrd_start = chosen.property("linux,initrd-start")?.as_usize()?;
@@ -90,7 +91,7 @@ pub unsafe fn get_memory(memory_size: u64) -> u64 {
 	u64::try_from(start_address).unwrap()
 }
 
-pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
+pub unsafe fn boot_kernel(kernel_info: LoadedKernel, extra_info: ExtraBootInfo) -> ! {
 	let LoadedKernel {
 		load_info,
 		entry_point,
@@ -117,6 +118,8 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		let fdt_addr = start::get_fdt_ptr().expose_addr();
 		DeviceTreeAddress::new(fdt_addr.try_into().unwrap())
 	};
+
+	assert!(extra_info.image.is_none());
 
 	let boot_info = BootInfo {
 		hardware_info: HardwareInfo {
