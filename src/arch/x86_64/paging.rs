@@ -1,9 +1,11 @@
 use core::fmt::Debug;
+use core::ptr;
 
 use log::warn;
+use x86_64::registers::control::Cr3;
 use x86_64::structures::paging::mapper::CleanUp;
 use x86_64::structures::paging::{
-	Mapper, Page, PageSize, PageTableFlags, PhysFrame, RecursivePageTable,
+	Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
 };
 
 use super::physicalmem::PhysAlloc;
@@ -11,7 +13,7 @@ use super::physicalmem::PhysAlloc;
 pub fn map<S>(virtual_address: usize, physical_address: usize, count: usize, flags: PageTableFlags)
 where
 	S: PageSize + Debug,
-	RecursivePageTable<'static>: Mapper<S>,
+	for<'a> OffsetPageTable<'a>: Mapper<S>,
 {
 	let pages = {
 		let start = Page::<S>::containing_address(x86_64::VirtAddr::new(virtual_address as u64));
@@ -37,7 +39,7 @@ where
 	);
 
 	let flags = flags | PageTableFlags::PRESENT;
-	let mut table = unsafe { recursive_page_table() };
+	let mut table = unsafe { identity_mapped_page_table() };
 
 	for (page, frame) in pages.zip(frames) {
 		unsafe {
@@ -57,7 +59,7 @@ pub fn map_range<S>(
 	mut flags: PageTableFlags,
 ) where
 	S: PageSize + Debug,
-	RecursivePageTable<'static>: Mapper<S>,
+	for<'a> OffsetPageTable<'a>: Mapper<S>,
 {
 	let first_page = Page::<S>::containing_address(x86_64::VirtAddr::new(virtual_start as u64));
 	let first_frame = PhysFrame::containing_address(x86_64::PhysAddr::new(phys_start as u64));
@@ -70,7 +72,7 @@ pub fn map_range<S>(
 		to_end = last_frame.start_address()
 	);
 	flags |= PageTableFlags::PRESENT;
-	let mut table = unsafe { recursive_page_table() };
+	let mut table = unsafe { identity_mapped_page_table() };
 	let page_range = core::iter::successors(Some(first_page), |page| Some(*page + 1u64));
 	let frame_range = PhysFrame::<S>::range(first_frame, last_frame);
 	for (page, frame) in core::iter::zip(page_range, frame_range) {
@@ -84,16 +86,17 @@ pub fn map_range<S>(
 }
 
 pub fn clean_up() {
-	let mut table = unsafe { recursive_page_table() };
+	let mut table = unsafe { identity_mapped_page_table() };
 
 	unsafe { table.clean_up(&mut PhysAlloc) }
 }
 
-unsafe fn recursive_page_table() -> RecursivePageTable<'static> {
-	let level_4_table_addr = 0xFFFF_FFFF_FFFF_F000_usize;
-	let level_4_table_ptr = sptr::from_exposed_addr_mut(level_4_table_addr);
+pub unsafe fn identity_mapped_page_table() -> OffsetPageTable<'static> {
+	let level_4_table_addr = Cr3::read().0.start_address().as_u64();
+	let level_4_table_ptr =
+		ptr::with_exposed_provenance_mut::<PageTable>(level_4_table_addr.try_into().unwrap());
 	unsafe {
-		let level_4_table = &mut *(level_4_table_ptr);
-		RecursivePageTable::new(level_4_table).unwrap()
+		let level_4_table = level_4_table_ptr.as_mut().unwrap();
+		OffsetPageTable::new(level_4_table, x86_64::addr::VirtAddr::new(0x0))
 	}
 }
