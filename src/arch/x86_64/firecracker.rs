@@ -16,6 +16,7 @@ use super::physicalmem::PhysAlloc;
 use super::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, paging};
 use crate::BootInfoExt;
 use crate::fdt::Fdt;
+use crate::os::ExtraBootInfo;
 
 mod fc {
 	pub const LINUX_KERNEL_BOOT_FLAG_MAGIC: u16 = 0xaa55;
@@ -128,7 +129,7 @@ pub fn find_kernel() -> &'static [u8] {
 	unsafe { slice::from_raw_parts(sptr::from_exposed_addr(elf_start), elf_len) }
 }
 
-pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
+pub unsafe fn boot_kernel(kernel_info: LoadedKernel, extra_info: ExtraBootInfo) -> ! {
 	let LoadedKernel {
 		load_info,
 		entry_point,
@@ -182,7 +183,12 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		write_bytes(stack, 0, KERNEL_STACK_SIZE.try_into().unwrap());
 	}
 
-	let mut fdt = Fdt::new("firecracker").unwrap();
+	let maybe_image = match extra_info.image {
+		None => &[],
+		Some(tar_image) => tar_image,
+	};
+
+	let mut fdt = Fdt::new("firecracker", maybe_image).unwrap();
 
 	// Load the boot_param memory-map information
 	let linux_e820_entries =

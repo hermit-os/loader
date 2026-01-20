@@ -18,6 +18,7 @@ use super::physicalmem::PhysAlloc;
 use crate::BootInfoExt;
 use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT};
 use crate::fdt::Fdt;
+use crate::os::ExtraBootInfo;
 
 unsafe extern "C" {
 	static mut loader_end: u8;
@@ -55,7 +56,7 @@ impl MemoryManagement for Mem {
 pub struct DeviceTree;
 
 impl DeviceTree {
-	pub fn create() -> FdtWriterResult<&'static [u8]> {
+	pub fn create(extra_info: &ExtraBootInfo) -> FdtWriterResult<&'static [u8]> {
 		let mut mem = Mem;
 		let multiboot = unsafe { Multiboot::from_ptr(mb_info as u64, &mut mem).unwrap() };
 
@@ -63,7 +64,12 @@ impl DeviceTree {
 			.memory_regions()
 			.expect("Could not find a memory map in the Multiboot information");
 
-		let mut fdt = Fdt::new("multiboot")?.memory_regions(memory_regions)?;
+		let maybe_image = match extra_info.image {
+			None => &[],
+			Some(tar_image) => tar_image,
+		};
+
+		let mut fdt = Fdt::new("multiboot", maybe_image)?.memory_regions(memory_regions)?;
 
 		if let Some(cmdline) = multiboot.command_line() {
 			fdt = fdt.bootargs(cmdline.to_owned())?;
@@ -142,7 +148,7 @@ pub fn find_kernel() -> &'static [u8] {
 	unsafe { slice::from_raw_parts(sptr::from_exposed_addr(elf_start), elf_len) }
 }
 
-pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
+pub unsafe fn boot_kernel(kernel_info: LoadedKernel, extra_info: ExtraBootInfo) -> ! {
 	let LoadedKernel {
 		load_info,
 		entry_point,
@@ -185,7 +191,7 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 		write_bytes(stack, 0, KERNEL_STACK_SIZE.try_into().unwrap());
 	}
 
-	let device_tree = DeviceTree::create().expect("Unable to create devicetree!");
+	let device_tree = DeviceTree::create(&extra_info).expect("Unable to create devicetree!");
 	let device_tree =
 		DeviceTreeAddress::new(u64::try_from(device_tree.as_ptr().expose_addr()).unwrap());
 

@@ -1,4 +1,4 @@
-mod allocator;
+pub(crate) mod allocator;
 mod console;
 
 use core::fmt::Write;
@@ -10,6 +10,7 @@ use log::info;
 
 pub use self::console::CONSOLE;
 use crate::arch;
+use crate::os::ExtraBootInfo;
 
 unsafe extern "C" {
 	static loader_end: u8;
@@ -26,7 +27,18 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
 	}
 
 	let kernel = arch::find_kernel();
+
+	let allocator = allocator::oneshot::OneshotAllocator::new(todo!());
+	let mut buf = None;
+	let (kernel, _) = crate::resolve_kernel(kernel, allocator, &mut buf);
+
 	let kernel = KernelObject::parse(kernel).unwrap();
+
+	let mut extra_info = ExtraBootInfo::default();
+	if let Some(tar_image) = buf {
+		let tar_image = allocator_api2::boxed::Box::leak(tar_image);
+		extra_info.image = Some((&*tar_image).into());
+	}
 
 	let mem_size = kernel.mem_size();
 	let kernel_addr = unsafe { arch::get_memory(mem_size as u64) };
@@ -40,7 +52,7 @@ pub(crate) unsafe extern "C" fn loader_main() -> ! {
 
 	let kernel_info = kernel.load_kernel(memory, memory.as_ptr() as u64);
 
-	unsafe { arch::boot_kernel(kernel_info) }
+	unsafe { arch::boot_kernel(kernel_info, extra_info) }
 }
 
 #[panic_handler]
