@@ -17,7 +17,8 @@ _start:
     movabs rsp, OFFSET {stack}
     add rsp, {stack_top_offset}
 
-    mov [boot_params], rsi
+    # Move the base address of the struct boot_params into `RDI` as first argument to `rust_start`.
+    mov rdi, rsi
 
     # initialize page tables
     # map kernel 1:1
