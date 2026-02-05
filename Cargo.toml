@@ -33,6 +33,8 @@ sbi-rt = "0.0.3"
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 linux-boot-params = { version = "0.17", optional = true }
 multiboot = { version = "0.8", optional = true }
+# xen-hvm = { path = "../xen/xen-hvm" }
+xen-hvm = { git = "https://github.com/hermit-os/xen.git", branch = "xen-hvm" }
 uart_16550 = "0.4"
 x86_64 = { version = "0.15", default-features = false, features = ["instructions"] }
 
@@ -46,7 +48,7 @@ built = { version = "0.8", features = ["git2", "chrono"] }
 # FIXME: When target-specific features exist, remove the workaround features.
 # https://github.com/rust-lang/cargo/issues/1197
 [features]
-default = []
+default = ["multiboot"]
 elf = []
 linux = []
 multiboot = []
