@@ -161,11 +161,6 @@ start64:
     jmp start64+0x28
 
 .section .data
-.global mb_info
-.align 8
-mb_info:
-    .8byte 0
-
 # Bootstrap page tables are used during the initialization.
 .align 4096
 boot_pml4:

@@ -75,11 +75,6 @@ invalid:
     jmp invalid
 
 .section .data
-.global boot_params
-.align 8
-boot_params:
-    .8byte 0
-
 # Bootstrap page tables are used during the initialization.
 .align 4096
 boot_pml4:
