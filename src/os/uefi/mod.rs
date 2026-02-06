@@ -29,21 +29,38 @@ fn main() -> Status {
 	crate::log::init();
 	crate::log_built_info();
 
-	let kernel_image = read_app();
-	let kernel = KernelObject::parse(&kernel_image).unwrap();
+	let kernel;
+	let kernel_memory;
+	let kernel_info;
+	let rsdp_: *const _;
+	let maybe_image: &[u8];
 
-	let kernel_memory = alloc_page_slice(kernel.mem_size()).unwrap();
-	let kernel_memory = &mut kernel_memory[..kernel.mem_size()];
+	{
+		let mut buf = None;
+		let kernel_image = read_app();
 
-	let kernel_info = kernel.load_kernel(kernel_memory, kernel_memory.as_ptr() as u64);
+		let (kernel_image2, _) = crate::resolve_kernel(&kernel_image, &mut buf);
 
-	let rsdp = rsdp();
+		kernel = KernelObject::parse(kernel_image2).unwrap();
 
-	drop(kernel_image);
+		let kernel_memory2 = alloc_page_slice(kernel.mem_size()).unwrap();
+		kernel_memory = &mut kernel_memory2[..kernel.mem_size()];
 
-	let mut fdt = Fdt::new("uefi")
+		kernel_info = kernel.load_kernel(kernel_memory, kernel_memory.as_ptr() as u64);
+
+		rsdp_ = rsdp();
+
+		// TODO: honor bootargs from image
+
+		maybe_image = match buf {
+			None => &[],
+			Some(tar_image) => &*alloc::boxed::Box::leak(tar_image),
+		}
+	}
+
+	let mut fdt = Fdt::new("uefi", maybe_image)
 		.unwrap()
-		.rsdp(u64::try_from(rsdp.expose_provenance()).unwrap())
+		.rsdp(u64::try_from(rsdp_.expose_provenance()).unwrap())
 		.unwrap();
 
 	if let Some(bootargs) = read_bootargs() {

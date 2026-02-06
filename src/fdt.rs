@@ -9,31 +9,51 @@ pub struct Fdt {
 	writer: FdtWriter,
 	root_node: FdtWriterNode,
 	bootargs: Option<String>,
+	image_range: Option<(u64, u64)>,
 }
 
 impl Fdt {
-	pub fn new(platform: &str) -> FdtWriterResult<Self> {
-		let mut writer = FdtWriter::new()?;
+	pub fn new(platform: &str, maybe_image: &'static [u8]) -> FdtWriterResult<Self> {
+		let mut mem_reserved = Vec::new();
+
+		let image_range = if maybe_image.is_empty() {
+			None
+		} else {
+			let image_start = (&maybe_image[0]) as *const u8 as u64;
+			mem_reserved.push(vm_fdt::FdtReserveEntry::new(
+				image_start,
+				maybe_image.len() as u64,
+			)?);
+			Some((image_start, maybe_image.len() as u64))
+		};
+
+		let mut writer = FdtWriter::new_with_mem_reserv(&mem_reserved[..])?;
 
 		let root_node = writer.begin_node("")?;
 		writer.property_string("compatible", &format!("hermit,{platform}"))?;
 		writer.property_u32("#address-cells", 0x2)?;
 		writer.property_u32("#size-cells", 0x2)?;
 
-		let bootargs = None;
-
 		Ok(Self {
 			writer,
 			root_node,
-			bootargs,
+			bootargs: None,
+			image_range,
 		})
 	}
 
 	pub fn finish(mut self) -> FdtWriterResult<Vec<u8>> {
 		let chosen_node = self.writer.begin_node("chosen")?;
+
 		if let Some(bootargs) = &self.bootargs {
 			self.writer.property_string("bootargs", bootargs)?;
 		}
+
+		if let Some((image_start, image_len)) = self.image_range {
+			self.writer
+				.property_array_u64("image_reg", &[image_start, image_len])?;
+		}
+
 		self.writer.end_node(chosen_node)?;
 
 		self.writer.end_node(self.root_node)?;
