@@ -11,6 +11,7 @@ publish = false
 align-address = "0.4"
 allocator-api2 = { version = "0.4", default-features = false }
 anstyle = { version = "1", default-features = false }
+anyhow = { version = "1", default-features = false }
 cfg-if = "1"
 hermit-entry = { version = "0.10", features = ["loader"] }
 log = "0.4"
