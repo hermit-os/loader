@@ -288,7 +288,7 @@ impl Qemu {
 			}
 			_ => {}
 		}
-		memory
+		8196
 	}
 
 	fn memory_args(&self) -> [String; 2] {

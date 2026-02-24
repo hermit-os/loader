@@ -9,13 +9,13 @@ use hermit_entry::boot_info::{
 };
 use hermit_entry::elf::LoadedKernel;
 use log::info;
-use multiboot::information::{MemoryManagement, Multiboot, MultibootInfo, PAddr};
+use multiboot::information::{MemoryManagement, MemoryType, Multiboot, MultibootInfo, PAddr};
 use vm_fdt::FdtWriterResult;
 use x86_64::structures::paging::{PageSize, PageTableFlags, Size2MiB, Size4KiB};
 
 use crate::BootInfoExt;
 use crate::arch::x86_64::physicalmem::PhysAlloc;
-use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, paging};
+use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, page_tables, paging};
 use crate::fdt::Fdt;
 
 unsafe extern "C" {
@@ -41,6 +41,25 @@ static MB_INFO: AtomicPtr<MultibootInfo> = AtomicPtr::new(ptr::null_mut());
 unsafe extern "C" fn rust_start(mb_info: *mut MultibootInfo) -> ! {
 	crate::log::init();
 	MB_INFO.store(mb_info, Ordering::Relaxed);
+
+	let mut mem = Mem;
+	let multiboot = unsafe { Multiboot::from_ref(&mut *mb_info, &mut mem) };
+	let highest_address = multiboot.find_highest_address().align_up(Size2MiB::SIZE) as usize;
+	// Memory after the highest end address is unused and available for the physical memory manager.
+	PhysAlloc::init(highest_address);
+
+	let max_phys_addr = multiboot
+		.memory_regions()
+		.unwrap()
+		.filter(|memory_region| memory_region.memory_type() == MemoryType::Available)
+		.map(|memory_region| memory_region.base_address() + memory_region.length())
+		.max()
+		.unwrap();
+
+	unsafe {
+		page_tables::init(max_phys_addr.try_into().unwrap());
+	}
+
 	unsafe {
 		crate::os::loader_main();
 	}
@@ -91,8 +110,6 @@ impl DeviceTree {
 }
 
 pub fn find_kernel() -> &'static [u8] {
-	use core::cmp;
-
 	paging::clean_up();
 	// Identity-map the Multiboot information.
 	let mb_info = MB_INFO.load(Ordering::Relaxed);
@@ -126,15 +143,7 @@ pub fn find_kernel() -> &'static [u8] {
 	let elf_len = (first_module.end - first_module.start) as usize;
 	info!("Module length: {elf_len:#x}");
 
-	// Find the maximum end address from the remaining modules
-	let mut end_address = first_module.end;
-	for m in module_iter {
-		end_address = cmp::max(end_address, m.end);
-	}
-
-	let modules_mapping_end = end_address.align_up(Size2MiB::SIZE) as usize;
-	// Memory after the highest end address is unused and available for the physical memory manager.
-	PhysAlloc::init(modules_mapping_end);
+	let highest_address = multiboot.find_highest_address().align_up(Size2MiB::SIZE) as usize;
 
 	// Identity-map the ELF header of the first module and until the 2 MiB
 	// mapping starts. We cannot start the 2 MiB mapping right from
@@ -152,7 +161,7 @@ pub fn find_kernel() -> &'static [u8] {
 	paging::map_range::<Size2MiB>(
 		first_module_mapping_end,
 		first_module_mapping_end,
-		modules_mapping_end,
+		highest_address,
 		PageTableFlags::empty(),
 	);
 

@@ -15,7 +15,7 @@ use x86_64::structures::paging::{PageSize, PageTableFlags, Size2MiB, Size4KiB};
 
 use crate::BootInfoExt;
 use crate::arch::x86_64::physicalmem::PhysAlloc;
-use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, paging};
+use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, page_tables, paging};
 use crate::fdt::Fdt;
 
 unsafe extern "C" {
@@ -40,6 +40,26 @@ static BOOT_PARAMS: AtomicPtr<BootParams> = AtomicPtr::new(ptr::null_mut());
 unsafe extern "C" fn rust_start(boot_params: *mut BootParams) -> ! {
 	crate::log::init();
 	BOOT_PARAMS.store(boot_params, Ordering::Relaxed);
+
+	let free_addr = ptr::addr_of!(loader_end)
+		.addr()
+		.align_up(Size2MiB::SIZE as usize);
+	// Memory after the highest end address is unused and available for the physical memory manager.
+	info!("Intializing PhysAlloc with {free_addr:#x}");
+	PhysAlloc::init(free_addr);
+
+	let boot_params_ref = unsafe { BootParams::get() };
+	let e820_entries = boot_params_ref.e820_entries();
+	let max_phys_addr = e820_entries
+		.iter()
+		.copied()
+		.map(|entry| entry.addr + entry.size)
+		.max()
+		.unwrap();
+	unsafe {
+		page_tables::init(max_phys_addr.try_into().unwrap());
+	}
+
 	unsafe {
 		crate::os::loader_main();
 	}
@@ -54,13 +74,6 @@ pub fn find_kernel() -> &'static [u8] {
 	let boot_params_ref = unsafe { BootParams::get() };
 
 	assert!(boot_params_ref.supported());
-
-	let free_addr = ptr::addr_of!(loader_end)
-		.addr()
-		.align_up(Size2MiB::SIZE as usize);
-	// Memory after the highest end address is unused and available for the physical memory manager.
-	info!("Intializing PhysAlloc with {free_addr:#x}");
-	PhysAlloc::init(free_addr);
 
 	boot_params_ref.map_ramdisk().unwrap()
 }

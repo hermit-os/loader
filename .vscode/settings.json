@@ -8,15 +8,15 @@
         "clippy",
         "--quiet",
         "--message-format=json",
-        "--target=aarch64-unknown-none-softfloat",
-        "--target=riscv64imac-unknown-none-elf",
+        // "--target=aarch64-unknown-none-softfloat",
+        // "--target=riscv64imac-unknown-none-elf",
         "--target=x86_64-unknown-none",
-        "--target=x86_64-unknown-uefi",
+        // "--target=x86_64-unknown-uefi",
     ],
     "rust-analyzer.check.targets": [
-        "aarch64-unknown-none-softfloat",
-        "riscv64imac-unknown-none-elf",
+        // "aarch64-unknown-none-softfloat",
+        // "riscv64imac-unknown-none-elf",
         "x86_64-unknown-none",
-        "x86_64-unknown-uefi",
+        // "x86_64-unknown-uefi",
     ]
 }
