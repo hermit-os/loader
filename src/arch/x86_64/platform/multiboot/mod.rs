@@ -2,6 +2,7 @@ use alloc::borrow::ToOwned;
 use core::ptr::write_bytes;
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr, slice};
+use xen_hvm::start_info::StartInfo;
 
 use align_address::Align;
 use hermit_entry::boot_info::{
@@ -17,6 +18,12 @@ use crate::BootInfoExt;
 use crate::arch::x86_64::physicalmem::PhysAlloc;
 use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, paging};
 use crate::fdt::Fdt;
+
+unsafe extern "C" {
+	fn _start(start_info: &'static StartInfo) -> !;
+}
+
+xen_hvm::phys32_entry!(_start);
 
 unsafe extern "C" {
 	static mut loader_end: u8;
@@ -38,9 +45,13 @@ mod entry {
 
 static MB_INFO: AtomicPtr<MultibootInfo> = AtomicPtr::new(ptr::null_mut());
 
-unsafe extern "C" fn rust_start(mb_info: *mut MultibootInfo) -> ! {
+unsafe extern "C" fn rust_start(start_info: &'static StartInfo) -> ! {
 	crate::log::init();
-	MB_INFO.store(mb_info, Ordering::Relaxed);
+
+	paging::map::<Size4KiB>(0x2000, 0x2000, 1, PageTableFlags::empty());
+	dbg!(start_info);
+	loop {}
+
 	unsafe {
 		crate::os::loader_main();
 	}

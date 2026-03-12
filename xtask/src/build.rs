@@ -40,10 +40,10 @@ impl Build {
 		sh.create_dir(dist_object.as_ref().parent().unwrap())?;
 		sh.copy_file(&build_object, &dist_object)?;
 
-		if self.artifact.target == Target::X86_64Multiboot {
-			eprintln!("Converting object to elf32-i386");
-			dist_object.convert_to_elf32_i386()?;
-		}
+		// if self.artifact.target == Target::X86_64Multiboot {
+		// 	eprintln!("Converting object to elf32-i386");
+		// 	dist_object.convert_to_elf32_i386()?;
+		// }
 
 		eprintln!("Loader available at {}", dist_object.as_ref().display());
 		Ok(())

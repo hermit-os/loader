@@ -531,6 +531,7 @@ dependencies = [
  "vm-fdt",
  "volatile 0.6.1",
  "x86_64",
+ "xen-hvm",
 ]
 
 [[package]]
@@ -1953,6 +1954,11 @@ dependencies = [
  "libc",
  "rustix",
 ]
+
+[[package]]
+name = "xen-hvm"
+version = "0.0.0"
+source = "git+https://github.com/hermit-os/xen.git?branch=xen-hvm#821741cf90d68137107707b3d6f92c8ced41f8e4"
 
 [[package]]
 name = "xshell"
