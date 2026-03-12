@@ -46,7 +46,7 @@ built = { version = "0.8", features = ["git2", "chrono"] }
 # FIXME: When target-specific features exist, remove the workaround features.
 # https://github.com/rust-lang/cargo/issues/1197
 [features]
-default = []
+default = ["x86_64-linux"]
 elf = []
 linux = []
 multiboot = []
