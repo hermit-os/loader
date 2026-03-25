@@ -1,18 +1,17 @@
 use alloc::borrow::ToOwned;
-use xen_hvm::reader::{IdentityMap, StartInfoReader};
+use core::ptr;
 use core::ptr::{NonNull, write_bytes};
 use core::sync::atomic::{AtomicPtr, Ordering};
-use core::{mem, ptr, slice};
-use xen_hvm::{MemmapTableEntry, MemmapType, ModlistEntry, StartInfo};
+use xen_hvm::reader::{IdentityMap, StartInfoReader};
+use xen_hvm::{MemmapType, StartInfo};
 
 use align_address::Align;
 use hermit_entry::boot_info::{
 	BootInfo, DeviceTreeAddress, HardwareInfo, PlatformInfo, SerialPortBase,
 };
 use hermit_entry::elf::LoadedKernel;
-use log::info;
 use vm_fdt::FdtWriterResult;
-use x86_64::structures::paging::{PageSize, Size2MiB, Size4KiB};
+use x86_64::structures::paging::{PageSize, Size4KiB};
 
 use crate::BootInfoExt;
 use crate::arch::x86_64::physicalmem::PhysAlloc;
@@ -49,8 +48,6 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 
 	let start_info = start_info();
 	dbg!(&start_info);
-
-
 
 	// panic!();
 
@@ -108,8 +105,10 @@ impl DeviceTree {
 		let start_info = start_info();
 		let mut fdt = Fdt::new("multiboot")?.mmap(start_info.memmap().unwrap())?;
 
-		// let cmdline = start_info.cmdline();
-		// fdt = fdt.bootargs(cmdline.to_str().unwrap().to_owned())?;
+		if let Some(cmdline) = start_info.cmdline() {
+			let cmdline = cmdline.to_str().unwrap().to_owned();
+			fdt = fdt.bootargs(cmdline)?;
+		}
 
 		let fdt = fdt.finish()?;
 
@@ -139,7 +138,7 @@ pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
 
 	// determine boot stack address
 	let loader_end = executable_end().as_ptr();
-	let mut new_stack = loader_end.addr().align_up(Size4KiB::SIZE as usize);
+	let new_stack = loader_end.addr().align_up(Size4KiB::SIZE as usize);
 
 	// if new_stack + KERNEL_STACK_SIZE as usize > mb_info.addr() {
 	// 	new_stack = (mb_info.addr() + mem::size_of::<Multiboot<'_, '_>>())

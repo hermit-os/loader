@@ -1,4 +1,5 @@
-#[allow(bad_asm_style)]
+#![allow(bad_asm_style)]
+
 core::arch::global_asm!(
 	include_str!("entry.s"),
 	rust_start = sym super::rust_start,
