@@ -531,6 +531,7 @@ dependencies = [
  "vm-fdt",
  "volatile 0.6.1",
  "x86_64",
+ "xen-hvm",
 ]
 
 [[package]]
@@ -1943,6 +1944,13 @@ checksum = "af3a19837351dc82ba89f8a125e22a3c475f05aba604acc023d62b2739ae2909"
 dependencies = [
  "libc",
  "rustix",
+]
+
+[[package]]
+name = "xen-hvm"
+version = "0.0.0"
+dependencies = [
+ "bitflags 2.9.4",
 ]
 
 [[package]]

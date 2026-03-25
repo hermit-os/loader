@@ -95,6 +95,24 @@ mod x86_64 {
 	}
 }
 
+#[cfg(feature = "pvh")]
+mod pvh {
+	use vm_fdt::FdtWriterResult;
+	use xen_hvm::{MemmapTableEntry, MemmapType};
+
+	impl super::Fdt {
+		pub fn mmap(mut self, memmap: &[MemmapTableEntry]) -> FdtWriterResult<Self> {
+			let memmap = memmap.iter().filter(|memmap| memmap.ty == MemmapType::Ram);
+
+			for memmap in memmap {
+				self = self.memory(memmap.addr..memmap.addr + memmap.size)?;
+			}
+
+			Ok(self)
+		}
+	}
+}
+
 #[cfg(target_os = "uefi")]
 mod uefi {
 	use core::fmt;

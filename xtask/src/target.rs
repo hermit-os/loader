@@ -7,6 +7,7 @@ use xshell::{Shell, cmd};
 pub enum Target {
 	X86_64Linux,
 	X86_64Multiboot,
+	X86_64Pvh,
 	X86_64Uefi,
 	Aarch64Elf,
 	Aarch64BeElf,
@@ -34,6 +35,7 @@ impl Target {
 		match self {
 			Self::X86_64Linux => "x86_64",
 			Self::X86_64Multiboot => "x86_64",
+			Self::X86_64Pvh => "x86_64",
 			Self::X86_64Uefi => "x86_64",
 			Self::Aarch64Elf => "aarch64",
 			Self::Aarch64BeElf => "aarch64_be",
@@ -45,6 +47,7 @@ impl Target {
 		match self {
 			Self::X86_64Linux => "x86_64-unknown-none",
 			Self::X86_64Multiboot => "x86_64-unknown-none",
+			Self::X86_64Pvh => "x86_64-unknown-none",
 			Self::X86_64Uefi => "x86_64-unknown-uefi",
 			Self::Aarch64Elf => "aarch64-unknown-none-softfloat",
 			Self::Aarch64BeElf => "aarch64_be-unknown-none-softfloat",
@@ -63,6 +66,7 @@ impl Target {
 		match self {
 			Self::X86_64Linux => &["--target=x86_64-unknown-none"],
 			Self::X86_64Multiboot => &["--target=x86_64-unknown-none"],
+			Self::X86_64Pvh => &["--target=x86_64-unknown-none"],
 			Self::X86_64Uefi => &["--target=x86_64-unknown-uefi"],
 			Self::Aarch64Elf => &["--target=aarch64-unknown-none-softfloat"],
 			Self::Aarch64BeElf => &[
@@ -75,7 +79,9 @@ impl Target {
 
 	pub fn rustflags(&self) -> &'static [&'static str] {
 		match self {
-			Self::X86_64Linux | Self::X86_64Multiboot => &["-Crelocation-model=static"],
+			Self::X86_64Linux | Self::X86_64Multiboot | Self::X86_64Pvh => {
+				&["-Crelocation-model=static"]
+			}
 			_ => &[],
 		}
 	}
@@ -84,6 +90,7 @@ impl Target {
 		match self {
 			Self::X86_64Linux => &["--features=x86_64-linux"],
 			Self::X86_64Multiboot => &["--features=x86_64-multiboot"],
+			Self::X86_64Pvh => &["--features=x86_64-pvh"],
 			Self::Aarch64Elf | Self::Aarch64BeElf => &["--features=elf"],
 			Self::Riscv64Sbi => &["--features=sbi"],
 			_ => &[],
@@ -101,6 +108,7 @@ impl Target {
 		match self {
 			Self::X86_64Linux => "hermit-loader-x86_64-linux",
 			Self::X86_64Multiboot => "hermit-loader-x86_64-multiboot",
+			Self::X86_64Pvh => "hermit-loader-x86_64-pvh",
 			Self::X86_64Uefi => "hermit-loader-x86_64.efi",
 			Self::Aarch64Elf => "hermit-loader-aarch64-elf",
 			Self::Aarch64BeElf => "hermit-loader-aarch64_be-elf",
@@ -111,7 +119,9 @@ impl Target {
 	#[cfg(feature = "ci")]
 	pub fn qemu(&self) -> &'static str {
 		match self {
-			Self::X86_64Linux | Self::X86_64Multiboot | Self::X86_64Uefi => "x86_64",
+			Self::X86_64Linux | Self::X86_64Multiboot | Self::X86_64Pvh | Self::X86_64Uefi => {
+				"x86_64"
+			}
 			Self::Aarch64Elf | Self::Aarch64BeElf => "aarch64",
 			Self::Riscv64Sbi => "riscv64",
 		}
@@ -125,6 +135,7 @@ impl FromStr for Target {
 		match s {
 			"x86_64-linux" => Ok(Self::X86_64Linux),
 			"x86_64-multiboot" => Ok(Self::X86_64Multiboot),
+			"x86_64-pvh" => Ok(Self::X86_64Pvh),
 			"x86_64-uefi" => Ok(Self::X86_64Uefi),
 			"aarch64-elf" => Ok(Self::Aarch64Elf),
 			"aarch64_be-elf" => Ok(Self::Aarch64BeElf),

@@ -5,5 +5,8 @@ cfg_if::cfg_if! {
 	} else if #[cfg(feature = "multiboot")] {
 		mod multiboot;
 		pub use self::multiboot::*;
+	} else if #[cfg(feature = "pvh")] {
+		mod pvh;
+		pub use self::pvh::*;
 	}
 }
