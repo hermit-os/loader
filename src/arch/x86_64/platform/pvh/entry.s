@@ -5,6 +5,17 @@
 
 .code32
 
+.macro gotpcrel reg, sym
+    call 2f
+2:
+    pop eax
+3:
+.att_syntax prefix
+    addl $_GLOBAL_OFFSET_TABLE_ + (3b - 2b), %eax
+.intel_syntax noprefix
+    mov \reg, dword ptr [eax + \sym@GOT]
+.endm
+
 .section .text
 .align 4
 .global _start
@@ -12,8 +23,17 @@ _start:
     mov edi, ebx
     cli # avoid any interrupt
 
+    call 2f
+    2:
+    pop eax
+    3:
+    .att_syntax prefix
+    addl $_GLOBAL_OFFSET_TABLE_ + (3b - 2b), %eax
+    .intel_syntax noprefix
+    mov esp, dword ptr [eax + {stack}@GOT]
+
+
     # Initialize stack pointer
-    mov esp, OFFSET {stack}
     add esp, {stack_top_offset}
 
     # Move the 32-bit physical address of the Multiboot information structure into `RDI` as first argument to `rust_start`.
@@ -53,7 +73,7 @@ cpu_init:
     jz Linvalid # They aren't, there is no long mode.
 
     # Set CR3
-    mov eax, OFFSET {level_4_table}
+    gotpcrel eax, {level_4_table}
     mov cr3, eax
 
     # we need to enable PAE modus
@@ -83,11 +103,18 @@ cpu_init:
     or eax, (1 << 31)       # enable paging
     mov cr0, eax
 
-    lgdt [{gdt_ptr}] # Load the 64-bit global descriptor table.
+    gotpcrel eax, {gdt_ptr}
+
+    lgdt [eax] # Load the 64-bit global descriptor table.
+
+    push {kernel_code_selector}
+    gotpcrel eax, start64
+    push eax
+    retf
     # https://github.com/llvm/llvm-project/issues/46048
     .att_syntax prefix
     # Set the code segment and enter 64-bit long mode.
-    ljmp ${kernel_code_selector}, $start64
+    # ljmp ${kernel_code_selector}, $start64
     .intel_syntax noprefix
 
 # there is no long mode
@@ -106,7 +133,7 @@ start64:
     mov gs, eax
     cld
     # set default stack pointer
-    movabs rsp, OFFSET {stack}
+    mov rsp, [rip + {stack}@GOTPCREL]
     add rsp, {stack_top_offset}
 
     # jump to the boot processors's C code
