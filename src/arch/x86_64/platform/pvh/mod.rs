@@ -42,6 +42,13 @@ fn start_info() -> StartInfoReader<'static, IdentityMap> {
 
 unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	crate::log::init();
+
+	use crate::os::{executable_start, executable_end};
+	let loader_start = executable_start();
+	let loader_end = executable_end();
+	println!("Loader: [{loader_start:p} - {loader_end:p}]");
+
+	dbg!(info);
 	let info = NonNull::new(info.cast_mut()).unwrap();
 	let info = unsafe { StartInfo::from_ptr(info).unwrap() };
 	START_INFO.store(ptr::from_ref(info).cast_mut(), Ordering::Relaxed);
