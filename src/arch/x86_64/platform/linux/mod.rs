@@ -35,7 +35,7 @@ static BOOT_PARAMS: AtomicPtr<BootParams> = AtomicPtr::new(ptr::null_mut());
 
 unsafe extern "C" fn rust_start(boot_params: *mut BootParams) -> ! {
 	crate::log::init();
-	BOOT_PARAMS.store(boot_params, Ordering::Relaxed);
+	BOOT_PARAMS.store(ptr::with_exposed_provenance_mut(0x7000), Ordering::Relaxed);
 
 	let loader_end = crate::os::executable_end().as_ptr();
 	let free_addr = loader_end.addr().align_up(Size2MiB::SIZE as usize);
@@ -44,7 +44,9 @@ unsafe extern "C" fn rust_start(boot_params: *mut BootParams) -> ! {
 	PhysAlloc::init(free_addr);
 
 	let boot_params_ref = unsafe { BootParams::get() };
+	println!("boot_params {boot_params_ref:?}");
 	let e820_entries = boot_params_ref.e820_entries();
+	dbg!(e820_entries);
 	let max_phys_addr = e820_entries
 		.iter()
 		.copied()
