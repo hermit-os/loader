@@ -88,7 +88,6 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 
 	let max_phys_addr = start_info
 		.memmap()
-		.unwrap()
 		.iter()
 		.filter(|memmap| memmap.ty == MemmapType::Ram)
 		.map(|memmap| memmap.addr + memmap.size)
@@ -109,7 +108,7 @@ pub struct DeviceTree;
 impl DeviceTree {
 	pub fn create() -> FdtWriterResult<&'static [u8]> {
 		let start_info = start_info();
-		let mut fdt = Fdt::new("multiboot")?.mmap(start_info.memmap().unwrap())?;
+		let mut fdt = Fdt::new("multiboot")?.mmap(start_info.memmap())?;
 
 		if let Some(cmdline) = start_info.cmdline() {
 			let cmdline = cmdline.to_str().unwrap().to_owned();
@@ -126,7 +125,7 @@ pub fn find_kernel() -> &'static [u8] {
 	let start_info = start_info();
 
 	let modlist = start_info.modlist();
-	let module = &modlist.unwrap()[0];
+	let module = &modlist[0];
 	let module = unsafe { module.identity_reader() };
 
 	module.as_slice()
