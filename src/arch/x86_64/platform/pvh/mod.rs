@@ -20,7 +20,7 @@ use crate::fdt::Fdt;
 use crate::os::executable_end;
 
 unsafe extern "C" {
-	fn _start(start_info: &'static StartInfo) -> !;
+	fn _start() -> !;
 }
 
 xen_hvm::phys32_entry!(_start);
@@ -49,8 +49,7 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	println!("Loader: [{loader_start:p} - {loader_end:p}]");
 
 	dbg!(info);
-	let info = NonNull::new(info.cast_mut()).unwrap();
-	let info = unsafe { StartInfo::from_ptr(info).unwrap() };
+	let info = unsafe { StartInfo::from_ptr(info.cast()).unwrap() };
 	START_INFO.store(ptr::from_ref(info).cast_mut(), Ordering::Relaxed);
 
 	let start_info = start_info();
