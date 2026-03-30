@@ -524,6 +524,7 @@ dependencies = [
  "multiboot",
  "naked-function",
  "one-shot-mutex",
+ "pvh",
  "sbi-rt",
  "take-static",
  "uart_16550",
@@ -531,7 +532,6 @@ dependencies = [
  "vm-fdt",
  "volatile 0.6.1",
  "x86_64",
- "xen-hvm",
 ]
 
 [[package]]
@@ -979,6 +979,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "pvh"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.9.4",
 ]
 
 [[package]]
@@ -1944,13 +1951,6 @@ checksum = "af3a19837351dc82ba89f8a125e22a3c475f05aba604acc023d62b2739ae2909"
 dependencies = [
  "libc",
  "rustix",
-]
-
-[[package]]
-name = "xen-hvm"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.9.4",
 ]
 
 [[package]]

@@ -2,8 +2,8 @@ use alloc::borrow::ToOwned;
 use core::ptr;
 use core::ptr::{NonNull, write_bytes};
 use core::sync::atomic::{AtomicPtr, Ordering};
-use xen_hvm::reader::{IdentityMap, StartInfoReader};
-use xen_hvm::{MemmapType, StartInfo};
+use pvh::IdentityMap;
+use pvh::{hvm, xen};
 
 use align_address::Align;
 use hermit_entry::boot_info::{
@@ -23,7 +23,7 @@ unsafe extern "C" {
 	fn _start() -> !;
 }
 
-xen_hvm::phys32_entry!(_start);
+pvh::phys32_entry!(_start);
 
 unsafe extern "C" {
 	static mut _end: u8;
@@ -31,9 +31,9 @@ unsafe extern "C" {
 
 mod entry;
 
-static START_INFO: AtomicPtr<StartInfo> = AtomicPtr::new(ptr::null_mut());
+static START_INFO: AtomicPtr<hvm::StartInfo> = AtomicPtr::new(ptr::null_mut());
 
-fn start_info() -> StartInfoReader<'static, IdentityMap> {
+fn start_info() -> hvm::StartInfoReader<'static, IdentityMap> {
 	let ptr = START_INFO.load(Ordering::Relaxed);
 	let ptr = NonNull::new(ptr).unwrap();
 	let start_info = unsafe { ptr.as_ref() };
@@ -43,13 +43,13 @@ fn start_info() -> StartInfoReader<'static, IdentityMap> {
 unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	crate::log::init();
 
-	use crate::os::{executable_start, executable_end};
+	use crate::os::{executable_end, executable_start};
 	let loader_start = executable_start();
 	let loader_end = executable_end();
 	println!("Loader: [{loader_start:p} - {loader_end:p}]");
 
 	dbg!(info);
-	let info = unsafe { StartInfo::from_ptr(info.cast()).unwrap() };
+	let info = unsafe { hvm::StartInfo::from_ptr(info.cast()).unwrap() };
 	START_INFO.store(ptr::from_ref(info).cast_mut(), Ordering::Relaxed);
 
 	let start_info = start_info();
@@ -89,7 +89,7 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	let max_phys_addr = start_info
 		.memmap()
 		.iter()
-		.filter(|memmap| memmap.ty == MemmapType::Ram)
+		.filter(|memmap| memmap.ty == xen::hvm::MemmapType::Ram)
 		.map(|memmap| memmap.addr + memmap.size)
 		.max()
 		.unwrap();
