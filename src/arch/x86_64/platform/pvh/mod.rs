@@ -1,9 +1,9 @@
 use alloc::borrow::ToOwned;
 use core::ptr;
-use core::ptr::{NonNull, write_bytes};
-use core::sync::atomic::{AtomicPtr, Ordering};
-use pvh::IdentityMap;
-use pvh::{hvm, xen};
+use core::ptr::write_bytes;
+use core::sync::atomic::{AtomicU32, Ordering};
+use pvh::start_info::MemmapType;
+use pvh::start_info::reader::{IdentityMap, StartInfoReader};
 
 use align_address::Align;
 use hermit_entry::boot_info::{
@@ -23,7 +23,7 @@ unsafe extern "C" {
 	fn _start() -> !;
 }
 
-pvh::phys32_entry!(_start);
+pvh::xen_elfnote_phys32_entry!(_start);
 
 unsafe extern "C" {
 	static mut _end: u8;
@@ -31,17 +31,17 @@ unsafe extern "C" {
 
 mod entry;
 
-static START_INFO: AtomicPtr<hvm::StartInfo> = AtomicPtr::new(ptr::null_mut());
+static START_INFO: AtomicU32 = AtomicU32::new(0);
 
-fn start_info() -> hvm::StartInfoReader<'static, IdentityMap> {
-	let ptr = START_INFO.load(Ordering::Relaxed);
-	let ptr = NonNull::new(ptr).unwrap();
-	let start_info = unsafe { ptr.as_ref() };
-	unsafe { start_info.identity_reader() }
+fn start_info() -> StartInfoReader<'static, IdentityMap> {
+	let paddr = START_INFO.load(Ordering::Relaxed);
+	unsafe { StartInfoReader::from_paddr_identity(paddr).unwrap() }
 }
 
-unsafe extern "C" fn rust_start(info: *const u32) -> ! {
+unsafe extern "C" fn rust_start(info: u32) -> ! {
+	println!("Hello");
 	crate::log::init();
+	START_INFO.store(info, Ordering::Relaxed);
 
 	use crate::os::{executable_end, executable_start};
 	let loader_start = executable_start();
@@ -49,8 +49,6 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	println!("Loader: [{loader_start:p} - {loader_end:p}]");
 
 	dbg!(info);
-	let info = unsafe { hvm::StartInfo::from_ptr(info.cast()).unwrap() };
-	START_INFO.store(ptr::from_ref(info).cast_mut(), Ordering::Relaxed);
 
 	let start_info = start_info();
 	dbg!(&start_info);
@@ -89,7 +87,7 @@ unsafe extern "C" fn rust_start(info: *const u32) -> ! {
 	let max_phys_addr = start_info
 		.memmap()
 		.iter()
-		.filter(|memmap| memmap.ty == xen::hvm::MemmapType::Ram)
+		.filter(|memmap| memmap.ty() == MemmapType::Ram)
 		.map(|memmap| memmap.addr + memmap.size)
 		.max()
 		.unwrap();
@@ -124,11 +122,9 @@ impl DeviceTree {
 pub fn find_kernel() -> &'static [u8] {
 	let start_info = start_info();
 
-	let modlist = start_info.modlist();
-	let module = &modlist[0];
-	let module = unsafe { module.identity_reader() };
-
-	module.as_slice()
+	let mut modlist = start_info.modlist();
+	let foo = modlist.next().unwrap();
+	unsafe  { core::mem::transmute( foo.as_slice()) }
 }
 
 pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
