@@ -124,7 +124,7 @@ pub fn find_kernel() -> &'static [u8] {
 
 	let mut modlist = start_info.modlist();
 	let foo = modlist.next().unwrap();
-	unsafe  { core::mem::transmute( foo.as_slice()) }
+	foo.as_slice()
 }
 
 pub unsafe fn boot_kernel(kernel_info: LoadedKernel) -> ! {
