@@ -57,6 +57,7 @@ pub fn find_kernel() -> &'static [u8] {
 		Fdt::from_ptr(ptr::with_exposed_provenance(DEVICE_TREE as usize))
 			.expect(".fdt file has invalid header")
 	};
+
 	let module_start = fdt
 		.find_node("/chosen")
 		.unwrap()
@@ -71,12 +72,20 @@ pub fn find_kernel() -> &'static [u8] {
 			} else {
 				value.parse().unwrap()
 			}
-		})
-		.unwrap();
+		});
+
+	let initrd_start = fdt
+		.find_node("/chosen")
+		.unwrap()
+		.properties()
+		.find(|prop| prop.name == "linux,initrd-start")
+		.map(|prop| usize::from_be_bytes(prop.value.try_into().unwrap()));
+
+	let kernel_start = module_start.or(initrd_start).unwrap();
 
 	let header = unsafe {
 		&*core::mem::transmute::<*const u8, *const Header>(ptr::with_exposed_provenance(
-			module_start,
+			kernel_start,
 		))
 	};
 
@@ -96,7 +105,7 @@ pub fn find_kernel() -> &'static [u8] {
 
 	unsafe {
 		core::slice::from_raw_parts(
-			ptr::with_exposed_provenance(module_start),
+			ptr::with_exposed_provenance(kernel_start),
 			file_size.try_into().unwrap(),
 		)
 	}
