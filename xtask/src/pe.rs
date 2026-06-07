@@ -18,7 +18,11 @@ const LINUX_MAX_INITRD_SIZE_POS: usize = 0x22C;
 
 const SYMBOL_TABLE_SIZE: usize = 40;
 
+const MAX_OPT_HEADER_SIZE: usize = 0xa0;
+
 // Helpful reference: https://upload.wikimedia.org/wikipedia/commons/1/1b/Portable_Executable_32_bit_Structure_in_SVG_fixed.svg
+// (but it's for PE32, and we have a PE32+, so cross-reference with https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-image-only)
+
 impl PEFile {
 	/// Write the firt 0x40 bytes of the PE file, corresponding to the DOS section
 	fn write_dos_header(&mut self) {
@@ -53,20 +57,56 @@ impl PEFile {
 		// We make sure that the old header is not too big for us to put the linux symbols where we
 		// want them
 		let num_symbol_tables: [u8; 2] = old_header[0x06..0x08].try_into().unwrap();
-		let num_symbol_tables = usize::try_from(u16::from_le_bytes(num_symbol_tables)).unwrap();
+		let num_symbol_tables = usize::from(u16::from_le_bytes(num_symbol_tables));
 		let opt_section_size: [u8; 2] = old_header[0x14..0x16].try_into().unwrap();
-		let opt_section_size = usize::try_from(u16::from_le_bytes(opt_section_size)).unwrap();
+		let opt_section_size = usize::from(u16::from_le_bytes(opt_section_size));
 
-		let total_header_size =
-			PE_MANDATORY_HEADER_SIZE + opt_section_size + (num_symbol_tables * SYMBOL_TABLE_SIZE);
+		let total_size_of_header: [u8; 4] = old_header[0x54..0x58].try_into().unwrap();
+		let total_size_of_header =
+			usize::try_from(u32::from_le_bytes(total_size_of_header)).unwrap();
 		assert!(
-			PE_HEADER_POS + total_header_size <= LINUX_MAGIC_POS,
-			"too many object tables, or optional header too big"
+			total_size_of_header >= LINUX_MAGIC_POS,
+			"total header size is too small"
 		);
 
-		// We copy the old header, shifted
+		// We copy the old header, up to the max header size (start of RVA directory)
 		let mut new_header = Vec::new();
-		new_header.extend_from_slice(&old_header[..total_header_size]);
+		new_header.extend_from_slice(&old_header[..PE_MANDATORY_HEADER_SIZE + MAX_OPT_HEADER_SIZE]);
+
+		if opt_section_size >= MAX_OPT_HEADER_SIZE {
+			// We need to remove extraneous Header Data Directory entries.
+			// Only the first six are required to boot correctly.
+			// Each entry occupies 8 bytes.
+
+			// Adapt the number of data directory entries
+			// Offset: 108 in the optional header (https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-windows-specific-fields-image-only)
+			(&mut new_header.as_mut_slice()
+				[PE_MANDATORY_HEADER_SIZE + 108..PE_MANDATORY_HEADER_SIZE + 112])
+				.copy_from_slice(6u32.to_le_bytes().as_slice());
+
+			// Set the header size to our value
+			(new_header.as_mut_slice()[0x14..0x16]).copy_from_slice(
+				u16::try_from(MAX_OPT_HEADER_SIZE)
+					.unwrap()
+					.to_le_bytes()
+					.as_slice(),
+			);
+		} else if opt_section_size < MAX_OPT_HEADER_SIZE {
+			panic!("invalid PE header: header is too small");
+		}
+
+		let total_header_size = PE_MANDATORY_HEADER_SIZE
+			+ MAX_OPT_HEADER_SIZE
+			+ (num_symbol_tables * SYMBOL_TABLE_SIZE);
+		assert!(
+			PE_HEADER_POS + total_header_size <= LINUX_MAGIC_POS,
+			"too many symbol tables! ({num_symbol_tables})"
+		);
+
+		// Copy the symbol tables
+		let symbol_tables_start = PE_MANDATORY_HEADER_SIZE + opt_section_size;
+		let symbol_tables_end = symbol_tables_start + (num_symbol_tables * SYMBOL_TABLE_SIZE);
+		new_header.extend_from_slice(&old_header[symbol_tables_start..symbol_tables_end]);
 
 		// Pad with zeros
 		while new_header.len() + PE_HEADER_POS < LINUX_MAGIC_POS {
