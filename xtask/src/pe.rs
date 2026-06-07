@@ -80,8 +80,8 @@ impl PEFile {
 
 			// Adapt the number of data directory entries
 			// Offset: 108 in the optional header (https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-windows-specific-fields-image-only)
-			(&mut new_header.as_mut_slice()
-				[PE_MANDATORY_HEADER_SIZE + 108..PE_MANDATORY_HEADER_SIZE + 112])
+			new_header.as_mut_slice()
+				[PE_MANDATORY_HEADER_SIZE + 108..PE_MANDATORY_HEADER_SIZE + 112]
 				.copy_from_slice(6u32.to_le_bytes().as_slice());
 
 			// Set the header size to our value
