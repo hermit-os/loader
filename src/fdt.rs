@@ -57,6 +57,21 @@ impl Fdt {
 		Ok(self)
 	}
 
+	/// Sets the physical address of the AMD SEV-SNP Confidential Computing Blob (CC Blob).
+	/// This page contains important information used by an SEV-SNP guest to communicate securely
+	/// with the firmware. For the purpose of this loader, however, it is just a pointer we need
+	/// to forward to the OS.
+	#[cfg(target_os = "uefi")]
+	pub fn cc_blob(mut self, cc_blob: u64) -> FdtWriterResult<Self> {
+		let cc_blob_node = self
+			.writer
+			.begin_node(&format!("hermit,cc_blob@{cc_blob:x}"))?;
+		self.writer.property_array_u64("reg", &[cc_blob, 1])?;
+		self.writer.end_node(cc_blob_node)?;
+
+		Ok(self)
+	}
+
 	pub fn memory(mut self, memory: Range<u64>) -> FdtWriterResult<Self> {
 		let memory_node = self
 			.writer

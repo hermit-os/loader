@@ -48,6 +48,10 @@ fn main() -> Status {
 		.rsdp(u64::try_from(rsdp.expose_provenance()).unwrap())
 		.unwrap();
 
+	if let Some(cc_blob) = detect_cc_blob() {
+		fdt = fdt.cc_blob(cc_blob).unwrap()
+	};
+
 	if let Some(bootargs) = esp.read_bootargs() {
 		fdt = fdt.bootargs(bootargs).unwrap();
 	}
@@ -185,4 +189,23 @@ impl Esp {
 
 		inner(&mut self.fs, path.as_ref())
 	}
+}
+
+/// Try to locate an AMD SEV-SNP confidential computing blob, and returns its address if found.
+/// This function is only relevant on AMD SEV-SNP guests, and will do mostly nothing otherwise.
+fn detect_cc_blob() -> Option<u64> {
+	let cc_blob_guid = uefi::Guid::parse_or_panic("067b1f5f-cf26-44c5-8554-93d777912d42");
+
+	system::with_config_table(|config_table| {
+		config_table
+			.iter()
+			.find(|entry| entry.guid == cc_blob_guid)
+			.map(|entry| {
+				info!(
+					"AMD SEV-SNP Confidential Computing Blob found at {:p}",
+					entry.address
+				);
+				u64::try_from(entry.address.addr()).unwrap()
+			})
+	})
 }
