@@ -67,6 +67,7 @@ impl Qemu {
 		let qemu = cmd!(sh, "{program} {arg...}")
 			.args(&["-display", "none"])
 			.args(&["-serial", "stdio"])
+			.args(&["-S", "-s"])
 			.args(self.machine_args())
 			.args(self.cpu_args())
 			.args(self.memory_args());

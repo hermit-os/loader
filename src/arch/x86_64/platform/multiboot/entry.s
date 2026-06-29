@@ -29,10 +29,27 @@ mboot:
 .align 4
 .global _start
 _start:
+
+    movgot eax, {stack}
+
+    call 2f
+2:
+    pop ebx
+// LLVM currently rejects the equivalent Intel syntax:
+// https://github.com/llvm/llvm-project/issues/161550
+.att_syntax prefix
+    addl $_GLOBAL_OFFSET_TABLE_ + (3f - 2b), %ebx
+3:
+.intel_syntax noprefix
+    mov ecx, dword ptr [ebx + {stack}@GOTPCREL]
+
+2:
+    jmp 2b
+
     cli # avoid any interrupt
 
     # Initialize stack pointer
-    mov esp, OFFSET {stack}
+    movgot esp, {stack}
     add esp, {stack_top_offset}
 
     # Move the 32-bit physical address of the Multiboot information structure into `RDI` as first argument to `rust_start`.
@@ -72,7 +89,7 @@ cpu_init:
     jz Linvalid # They aren't, there is no long mode.
 
     # Set CR3
-    mov eax, OFFSET {level_4_table}
+    movgot eax, {level_4_table}
     mov cr3, eax
 
     # we need to enable PAE modus
@@ -102,11 +119,18 @@ cpu_init:
     or eax, (1 << 31)       # enable paging
     mov cr0, eax
 
-    lgdt [{gdt_ptr}] # Load the 64-bit global descriptor table.
+    movgot eax, {gdt_ptr}
+
+    lgdt [eax] # Load the 64-bit global descriptor table.
+
+    push {kernel_code_selector}
+    movgot eax, start64
+    push eax
+    retf
     # https://github.com/llvm/llvm-project/issues/46048
     .att_syntax prefix
     # Set the code segment and enter 64-bit long mode.
-    ljmp ${kernel_code_selector}, $start64
+    # ljmp ${kernel_code_selector}, $start64
     .intel_syntax noprefix
 
 # there is no long mode
@@ -125,7 +149,7 @@ start64:
     mov gs, eax
     cld
     # set default stack pointer
-    movabs rsp, OFFSET {stack}
+    mov rsp, [rip + {stack}@GOTPCREL]
     add rsp, {stack_top_offset}
 
     # jump to the boot processors's C code

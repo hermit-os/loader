@@ -18,8 +18,10 @@ use crate::arch::x86_64::physicalmem::PhysAlloc;
 use crate::arch::x86_64::{KERNEL_STACK_SIZE, SERIAL_IO_PORT, page_tables};
 use crate::fdt::Fdt;
 
+#[allow(bad_asm_style)]
 mod entry {
 	core::arch::global_asm!(
+		include_str!("../../i386_gotpcrel.s"),
 		include_str!("entry.s"),
 		rust_start = sym super::rust_start,
 		stack = sym crate::arch::x86_64::stack::STACK,
