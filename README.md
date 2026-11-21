@@ -2,6 +2,11 @@
 
 # The Hermit Loader
 
+> [!IMPORTANT]
+> This repository is archived and no longer maintained.
+> The loader is now developed in the [kernel repository](https://github.com/hermit-os/kernel/tree/main/crates/loader).
+> New releases are published there with tags of the form `loader-x.y.z`, see [releases](https://github.com/hermit-os/kernel/releases).
+
 This project is a bootloader to run the [Hermit kernel](https://github.com/hermitcore/kernel) in different environments.
 
 ## Requirements
